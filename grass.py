@@ -1,26 +1,22 @@
-
 from pico2d import *
+import os
 
-IMG_TILE = 'Tile_1.png'
+BASE = os.path.dirname(__file__)
+def p(*names):
+    return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
 
 class Grass:
     def __init__(self):
-        try:
-            self.tile = load_image(IMG_TILE)
-        except:
-            self.tile = None
+        self.tile = load_image(p('EnvironmentTiles', 'Tile_1.png'))
 
     def update(self):
         pass
 
     def draw(self):
         cw = get_canvas_width()
-        if self.tile:
-            w, h = self.tile.w, self.tile.h
-            y = h // 2
-            x = w // 2
-            while x < cw:
-                self.tile.draw(x, y)
-                x += w
-        else:
-            draw_rectangle(0, 0, cw, 40)
+        w, h = self.tile.w, self.tile.h
+        y = h // 2
+        x = w // 2
+        while x < cw:
+            self.tile.draw(x, y)
+            x += w
