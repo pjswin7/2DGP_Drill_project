@@ -7,7 +7,7 @@ def p(*names):
 
 class Boy:
     def __init__(self):
-        self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]
+        self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]  #각 이미지들을 프레임 모음으로 만들기 위한 코드
         self.frame = 0.0
         self.fps = 10.0
         self.x, self.y = 320, 120
