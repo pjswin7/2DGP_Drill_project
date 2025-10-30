@@ -1,9 +1,31 @@
 from pico2d import *
 import os
 
+from state_machine import StateMachine
+
 BASE = os.path.dirname(__file__)
 def p(*names):
     return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
+
+
+class Idle:
+    def __init__(self, boy):
+        self.boy = boy
+
+    def do(self):
+        # 프레임 진행(기존 Boy.update 내용)
+        now = get_time()
+        dt = now - self.boy.prev_time
+        self.boy.prev_time = now
+        self.boy.frame = (self.boy.frame + self.boy.fps * dt) % 8
+
+    def draw(self):
+        # 그리기(기존 Boy.draw 내용)
+        image = self.boy.images[int(self.boy.frame)]
+        w = int(image.w * self.boy.scale)
+        h = int(image.h * self.boy.scale)
+        image.draw(self.boy.x, self.boy.y, w, h)
+
 
 class Boy:
     def __init__(self):
@@ -14,18 +36,13 @@ class Boy:
         self.x, self.y = 320, 80
         self.prev_time = get_time()  # 시작 기준 시간
 
+        self.state_machine = StateMachine(Idle(self))
+
     def handle_event(self, e):
         pass
 
     def update(self):
-        now = get_time()
-        dt = now - self.prev_time   # 지난 프레임에서 흐른 시간
-        self.prev_time = now
-        self.frame = (self.frame + self.fps * dt) % 8
+        self.state_machine.update()
 
     def draw(self):
-        # 다른 파일 수정 없이도 캐릭터가 커져서 보임
-        image = self.images[int(self.frame)]
-        w = int(image.w * self.scale)
-        h = int(image.h * self.scale)
-        image.draw(self.x, self.y, w, h)
+        self.state_machine.draw()
