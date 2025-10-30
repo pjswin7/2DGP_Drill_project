@@ -1,11 +1,20 @@
 from pico2d import *
 import os
 
+
 from state_machine import StateMachine
 
 BASE = os.path.dirname(__file__)
 def p(*names):
     return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
+
+
+
+def right_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_RIGHT
+def right_up(e):    return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1].key == SDLK_RIGHT
+def left_down(e):   return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_LEFT
+def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1].key == SDLK_LEFT
+
 
 
 class Idle:
@@ -27,6 +36,42 @@ class Idle:
         image.draw(self.boy.x, self.boy.y, w, h)
 
 
+
+class Run:
+    def __init__(self, boy):
+        self.boy = boy
+
+    def enter(self, e):
+        if right_down(e):
+            self.boy.dir = 1
+            self.boy.face_dir = 1
+        elif left_down(e):
+            self.boy.dir = -1
+            self.boy.face_dir = -1
+
+    def exit(self, e):
+        pass
+
+    def do(self):
+        self.boy.frame = (self.boy.frame + 1) % 8
+        self.boy.x += self.boy.dir * 5
+        self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
+
+    def draw(self):
+        image = self.boy.images[int(self.boy.frame)]
+        w = int(image.w * self.boy.scale)
+        h = int(image.h * self.boy.scale)
+        # 좌/우 반전은 시트 레이아웃에 따라 필요 시 composite_draw로
+        if self.boy.face_dir == 1:
+            image.draw(self.boy.x, self.boy.y, w, h)
+        else:
+            image.composite_draw(0, 'h', self.boy.x, self.boy.y, w, h)
+
+
+
+
+
+
 class Boy:
     def __init__(self):
         self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]  #각 이미지들을 프레임 모음으로 만들기 위한 코드
@@ -36,9 +81,28 @@ class Boy:
         self.x, self.y = 320, 80
         self.prev_time = get_time()  # 시작 기준 시간
 
-        self.state_machine = StateMachine(Idle(self))
+        self.dir = 0
+        self.face_dir = 1
+        self.left_bound, self.right_bound = 30, 770
+
+        #  상태 객체
+        self.IDLE = Idle(self)
+        self.RUN = Run(self)
+
+        #rules: 예시 스타일
+        self.rules = {
+            self.IDLE: {right_down: self.RUN, left_down: self.RUN},
+            self.RUN: {right_up: self.IDLE, left_up: self.IDLE,
+                       right_down: self.RUN, left_down: self.RUN},  # 누른 방향으로 계속 RUN 유지(방향만 바뀜)
+        }
+
+        # [변경] 상태머신: 시작 상태 + rules 전달
+        self.state_machine = StateMachine(self.IDLE, self.rules)
+
+
 
     def handle_event(self, e):
+        self.state_machine.handle_state_event(('INPUT', e))
         pass
 
     def update(self):
