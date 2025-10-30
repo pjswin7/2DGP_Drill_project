@@ -21,6 +21,12 @@ class Idle:
     def __init__(self, boy):
         self.boy = boy
 
+    def enter(self, e):
+        self.boy.dir = 0
+
+    def exit(self, e):
+        pass
+
     def do(self):
         # 프레임 진행(기존 Boy.update 내용)
         now = get_time()
