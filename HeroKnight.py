@@ -9,7 +9,8 @@ class Boy:
     def __init__(self):
         self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]  #각 이미지들을 프레임 모음으로 만들기 위한 코드
         self.frame = 0.0
-        self.fps = 10.0
+        self.fps = 10
+        self.scale=2.0
         self.x, self.y = 320, 120
         self.prev_time = get_time()  # 시작 기준 시간
 
@@ -23,4 +24,8 @@ class Boy:
         self.frame = (self.frame + self.fps * dt) % 8
 
     def draw(self):
-        self.images[int(self.frame)].draw(self.x, self.y) #현재 이미지 그리기
+        # 다른 파일 수정 없이도 캐릭터가 커져서 보임
+        image = self.images[int(self.frame)]
+        w = int(image.w * self.scale)
+        h = int(image.h * self.scale)
+        image.draw(self.x, self.y, w, h)
