@@ -11,7 +11,7 @@ class Boy:
         self.frame = 0.0
         self.fps = 10
         self.scale=2.0
-        self.x, self.y = 320, 120
+        self.x, self.y = 320, 80
         self.prev_time = get_time()  # 시작 기준 시간
 
     def handle_event(self, e):
