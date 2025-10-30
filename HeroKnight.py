@@ -39,7 +39,10 @@ class Idle:
         image = self.boy.images[int(self.boy.frame)]
         w = int(image.w * self.boy.scale)
         h = int(image.h * self.boy.scale)
-        image.draw(self.boy.x, self.boy.y, w, h)
+        if self.boy.face_dir == 1:  # 오른쪽을 보는 중
+            image.draw(self.boy.x, self.boy.y, w, h)
+        else:  # 왼쪽을 보는 중
+            image.composite_draw(0, 'h', self.boy.x, self.boy.y, w, h)
 
 
 
