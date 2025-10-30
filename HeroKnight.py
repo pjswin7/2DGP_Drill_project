@@ -62,13 +62,15 @@ class Run:
         pass
 
     def do(self):
-        self.boy.frame = (self.boy.frame + 1) % 8
+        #  달리기 프레임은 run_images 개수 기준으로
+        self.boy.frame = (self.boy.frame + 1) % len(self.boy.run_images)
+        # 이동(고정 스텝)
         self.boy.x += self.boy.dir * 5
         self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
 
     def draw(self):
-        image = self.boy.images[int(self.boy.frame)]
-        w = int(image.w * self.boy.scale)
+        image = self.boy.run_images[int(self.boy.frame)]
+        w = int(image.w * self.boy.scale);
         h = int(image.h * self.boy.scale)
         # 좌/우 반전은 시트 레이아웃에 따라 필요 시 composite_draw로
         if self.boy.face_dir == 1:
@@ -83,7 +85,8 @@ class Run:
 
 class Boy:
     def __init__(self):
-        self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]  #각 이미지들을 프레임 모음으로 만들기 위한 코드
+        self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]
+        self.run_images = [load_image(p('HeroKnight', 'Run', f'HeroKnight_Run_{i}.png')) for i in range(10)]  #각 이미지들을 프레임 모음으로 만들기 위한 코드
         self.frame = 0.0
         self.fps = 10
         self.scale=2.0
