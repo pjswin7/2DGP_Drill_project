@@ -35,6 +35,7 @@ class Idle:
         self.boy.y = self.boy.ground_y
         self.boy.vy = 0
         self.boy.frame = 0
+        self.boy.prev_time = get_time()
 
     def exit(self, e):
         pass
@@ -72,15 +73,22 @@ class Run:
         self.boy.y = self.boy.ground_y
         self.boy.vy = 0
         self.boy.frame = 0
+        self.boy.prev_time = get_time()
 
     def exit(self, e):
         pass
 
     def do(self):
-        #  달리기 프레임은 run_images 개수 기준으로
-        self.boy.frame = (self.boy.frame + 1) % len(self.boy.run_images)
-        # 이동(고정 스텝)
-        self.boy.x += self.boy.dir * 5
+        now = get_time()
+        dt = now - self.boy.prev_time
+        if dt > 0.05: dt = 0.05  # 큰 프레임 간격 캡
+        self.boy.prev_time = now
+
+        # 초당 self.boy.fps 만큼 진행
+        self.boy.frame = (self.boy.frame + self.boy.fps * dt) % len(self.boy.run_images)
+
+        # 초당 run_px_per_sec 만큼 이동
+        self.boy.x += self.boy.dir * self.boy.run_px_per_sec * dt
         self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
 
     def draw(self):
@@ -218,6 +226,7 @@ class Boy:
         self.vy = 0.0
         self.g = -1200.0  # 중력(픽셀/초^2) - 필요하면 숫자만 바꿔
         self.jump_speed = 600.0  # 점프 초기속도(픽셀/초)
+        self.run_px_per_sec = 300.0
 
         #  상태 객체
         self.IDLE = Idle(self)

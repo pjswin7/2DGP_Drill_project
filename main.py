@@ -33,7 +33,7 @@ while running:
     update_canvas()
 
 
-    delay(0.03)
+    delay(0)
 
 
 close_canvas()
