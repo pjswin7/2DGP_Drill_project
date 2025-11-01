@@ -276,8 +276,8 @@ class Boy:
     def handle_event(self, e):
         self.state_machine.handle_state_event(('INPUT', e))
         if e.type == SDL_KEYUP:
-            if e.key == SDLK_RIGHT and self.dir == 1: self.dir = 0
-            if e.key == SDLK_LEFT and self.dir == -1: self.dir = 0
+             if e.key == SDLK_RIGHT and self.dir == 1: self.dir = 0
+             if e.key == SDLK_LEFT and self.dir == -1: self.dir = 0
         pass
 
     def update(self):
