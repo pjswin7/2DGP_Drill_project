@@ -4,7 +4,7 @@ import os
 
 
 # self.vy(수직속도), self.g(중력), self.jump_speed(초기속도), self.ground_y(바닥 높이)
-#  self.air_vx(공중에서 유지할 수평 속도),
+# self.air_vx(공중에서 유지할 수평 속도),
 
 
 from state_machine import StateMachine
@@ -114,6 +114,9 @@ class Jump:
             # 지상 체크 제거하고 항상 점프 시작 속도 부여 + 바닥에 스냅
             self.boy.y = self.boy.ground_y
             self.boy.vy = self.boy.jump_speed
+            self.boy.air_vx = self.boy.dir * self.boy.run_px_per_sec
+            if self.boy.dir != 0:
+                self.boy.face_dir = self.boy.dir
         self.boy.prev_time = get_time()
 
         if right_down(e): self.boy.face_dir = 1
@@ -129,6 +132,9 @@ class Jump:
 
         self.boy.vy += self.boy.g * dt
         self.boy.y += self.boy.vy * dt
+
+        self.boy.x += self.boy.air_vx * dt
+        self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
 
         # 마지막 컷에서 멈추기(이벤트 보내지 않음)
         self.boy.anim_acc += dt
@@ -170,9 +176,13 @@ class Fall:
         self.boy.vy += self.boy.g * dt
         self.boy.y += self.boy.vy * dt
 
+        self.boy.x += self.boy.air_vx * dt
+        self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
+
         if self.boy.y <= self.boy.ground_y:
             self.boy.y = self.boy.ground_y
             self.boy.vy = 0
+            self.boy.air_vx = 0.0
             if self.boy.dir != 0:
                 self.boy.state_machine.handle_state_event(('LANDED_RUN', None))
             else:
@@ -228,6 +238,7 @@ class Boy:
         self.g = -1200.0  # 중력(픽셀/초^2) - 필요하면 숫자만 바꿔
         self.jump_speed = 600.0  # 점프 초기속도(픽셀/초)
         self.run_px_per_sec = 300.0
+        self.air_vx = 0.0
 
         #  상태 객체
         self.IDLE = Idle(self)
