@@ -2,6 +2,10 @@ from pico2d import *
 import os
 
 
+
+# self.vy(수직속도), self.g(중력), self.jump_speed(초기속도), self.ground_y(바닥 높이)
+
+
 from state_machine import StateMachine
 
 BASE = os.path.dirname(__file__)
