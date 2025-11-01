@@ -4,6 +4,7 @@ import os
 
 
 # self.vy(수직속도), self.g(중력), self.jump_speed(초기속도), self.ground_y(바닥 높이)
+#  self.air_vx(공중에서 유지할 수평 속도),
 
 
 from state_machine import StateMachine
