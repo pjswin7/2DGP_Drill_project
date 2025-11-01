@@ -34,6 +34,7 @@ class Idle:
         self.boy.dir = 0
         self.boy.y = self.boy.ground_y
         self.boy.vy = 0
+        self.boy.frame = 0
 
     def exit(self, e):
         pass
@@ -70,6 +71,7 @@ class Run:
             self.boy.face_dir = -1
         self.boy.y = self.boy.ground_y
         self.boy.vy = 0
+        self.boy.frame = 0
 
     def exit(self, e):
         pass
@@ -100,15 +102,19 @@ class Jump:
         if space_down(e):               # Space로 진입했을 때만 프레임 리셋
             self.boy.jump_idx = 0
             self.boy.anim_acc = 0.0
-            # 점프 시작 속도 부여 (지상에서만)
-            if abs(self.boy.y - self.boy.ground_y) < 1e-3:
-                self.boy.vy = self.boy.jump_speed
+            # 지상 체크 제거하고 항상 점프 시작 속도 부여 + 바닥에 스냅
+            self.boy.y = self.boy.ground_y
+            self.boy.vy = self.boy.jump_speed
+        self.boy.prev_time = get_time()
+
         if right_down(e): self.boy.face_dir = 1
         if left_down(e):  self.boy.face_dir = -1
+
     def exit(self, e): pass
     def do(self):
         now = get_time()
         dt = now - self.boy.prev_time
+        if dt > 0.05: dt = 0.05
         self.boy.prev_time = now
 
 
@@ -141,12 +147,14 @@ class Fall:
         if jump_done(e):
             self.boy.fall_idx = 0
             self.boy.anim_acc = 0.0
+        self.boy.prev_time = get_time()
         if right_down(e): self.boy.face_dir = 1
         if left_down(e):  self.boy.face_dir = -1
     def exit(self, e): pass
     def do(self):
         now = get_time()
         dt = now - self.boy.prev_time
+        if dt > 0.05: dt = 0.05
         self.boy.prev_time = now
 
         # 낙하 중 수직 이동(중력만)
