@@ -18,7 +18,8 @@ def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1]
 def space_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_SPACE
 def jump_done(e):   return e[0] == 'JUMP_DONE'
 def fall_done(e):   return e[0] == 'FALL_DONE'
-
+def landed_run(e):   return e[0] == 'LANDED_RUN'     # 착지 + 이동중
+def landed_idle(e):  return e[0] == 'LANDED_IDLE'    # 착지 + 정지
 
 
 class Idle:
@@ -135,7 +136,10 @@ class Fall:
             self.boy.fall_idx += 1
             if self.boy.fall_idx > self.boy.FALL_LAST:
                 # 달리는 중이면 Run, 아니면 Idle
-                self.boy.state_machine.handle_state_event(('FALL_DONE', None))
+                if self.boy.dir != 0:
+                    self.boy.state_machine.handle_state_event(('LANDED_RUN', None))
+                else:
+                    self.boy.state_machine.handle_state_event(('LANDED_IDLE', None))
     def draw(self):
         img = self.boy.fall_images[min(self.boy.fall_idx, self.boy.FALL_LAST)]
         w = int(img.w * self.boy.scale); h = int(img.h * self.boy.scale)
@@ -181,17 +185,23 @@ class Boy:
 
         #rules: 예시 스타일
         self.rules = {
-            self.IDLE: {right_down: self.RUN, left_down: self.RUN},
-            self.RUN: {right_up: self.IDLE, left_up: self.IDLE,
-                       right_down: self.RUN, left_down: self.RUN},# 누른 방향으로 계속 RUN 유지(방향만 바뀜)
+            self.IDLE: {
+                right_down: self.RUN, left_down: self.RUN,
+                space_down: self.JUMP,
+            },
+            self.RUN: {
+                right_up: self.IDLE, left_up: self.IDLE,
+                right_down: self.RUN, left_down: self.RUN,
+                space_down: self.JUMP,
+            },
             self.JUMP: {
-                right_down: self.JUMP, left_down: self.JUMP,  # 공중에서 얼굴만 전환
-                jump_done: self.FALL,  # Jump 끝나면 Fall 시작
+                right_down: self.JUMP, left_down: self.JUMP,
+                jump_done: self.FALL,
             },
             self.FALL: {
                 right_down: self.FALL, left_down: self.FALL,
-                # 낙하가 끝났을 때: dir이 0이 아니면 Run, 0이면 Idle로 복귀
-                fall_done: self.RUN if self.dir != 0 else self.IDLE,
+                landed_run: self.RUN,
+                landed_idle: self.IDLE,
             },
         }
 
@@ -202,6 +212,9 @@ class Boy:
 
     def handle_event(self, e):
         self.state_machine.handle_state_event(('INPUT', e))
+        if e.type == SDL_KEYUP:
+            if e.key == SDLK_RIGHT and self.dir == 1: self.dir = 0
+            if e.key == SDLK_LEFT and self.dir == -1: self.dir = 0
         pass
 
     def update(self):
