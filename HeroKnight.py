@@ -32,6 +32,8 @@ class Idle:
 
     def enter(self, e):
         self.boy.dir = 0
+        self.boy.y = self.boy.ground_y
+        self.boy.vy = 0
 
     def exit(self, e):
         pass
@@ -66,6 +68,8 @@ class Run:
         elif left_down(e):
             self.boy.dir = -1
             self.boy.face_dir = -1
+        self.boy.y = self.boy.ground_y
+        self.boy.vy = 0
 
     def exit(self, e):
         pass
@@ -96,6 +100,9 @@ class Jump:
         if space_down(e):               # Space로 진입했을 때만 프레임 리셋
             self.boy.jump_idx = 0
             self.boy.anim_acc = 0.0
+            # 점프 시작 속도 부여 (지상에서만)
+            if abs(self.boy.y - self.boy.ground_y) < 1e-3:
+                self.boy.vy = self.boy.jump_speed
         if right_down(e): self.boy.face_dir = 1
         if left_down(e):  self.boy.face_dir = -1
     def exit(self, e): pass
@@ -104,14 +111,22 @@ class Jump:
         dt = now - self.boy.prev_time
         self.boy.prev_time = now
 
-        # 간단한 타이머로 프레임 넘김(고급 물리 없음)
+
+        self.boy.vy += self.boy.g * dt
+        self.boy.y += self.boy.vy * dt
+
+        # 마지막 컷에서 멈추기(이벤트 보내지 않음)
         self.boy.anim_acc += dt
         if self.boy.anim_acc >= 1.0 / self.boy.fps:
             self.boy.anim_acc = 0.0
-            self.boy.jump_idx += 1
-            if self.boy.jump_idx > self.boy.JUMP_LAST:
-                # Jump 애니메이션 종료 → Fall로 넘어가도록 내부 이벤트 발생
-                self.boy.state_machine.handle_state_event(('JUMP_DONE', None))
+            if self.boy.jump_idx < self.boy.JUMP_LAST:
+                self.boy.jump_idx += 1
+
+
+        # 정점 도달 시에만 낙하로 전환
+        if self.boy.vy <= 0:
+            self.boy.state_machine.handle_state_event(('JUMP_DONE', None))
+
     def draw(self):
         img = self.boy.jump_images[min(self.boy.jump_idx, self.boy.JUMP_LAST)]
         w = int(img.w * self.boy.scale); h = int(img.h * self.boy.scale)
@@ -134,16 +149,26 @@ class Fall:
         dt = now - self.boy.prev_time
         self.boy.prev_time = now
 
+        # 낙하 중 수직 이동(중력만)
+        self.boy.vy += self.boy.g * dt
+        self.boy.y += self.boy.vy * dt
+
+        if self.boy.y <= self.boy.ground_y:
+            self.boy.y = self.boy.ground_y
+            self.boy.vy = 0
+            if self.boy.dir != 0:
+                self.boy.state_machine.handle_state_event(('LANDED_RUN', None))
+            else:
+                self.boy.state_machine.handle_state_event(('LANDED_IDLE', None))
+            return  # 여기서 끝 (아래 프레임 갱신 생략)
+
+            # 애니 프레임 넘김 (공중일 때만)
         self.boy.anim_acc += dt
         if self.boy.anim_acc >= 1.0 / self.boy.fps:
             self.boy.anim_acc = 0.0
-            self.boy.fall_idx += 1
-            if self.boy.fall_idx > self.boy.FALL_LAST:
-                # 달리는 중이면 Run, 아니면 Idle
-                if self.boy.dir != 0:
-                    self.boy.state_machine.handle_state_event(('LANDED_RUN', None))
-                else:
-                    self.boy.state_machine.handle_state_event(('LANDED_IDLE', None))
+            self.boy.fall_idx = min(self.boy.fall_idx + 1, self.boy.FALL_LAST)
+
+
     def draw(self):
         img = self.boy.fall_images[min(self.boy.fall_idx, self.boy.FALL_LAST)]
         w = int(img.w * self.boy.scale); h = int(img.h * self.boy.scale)
@@ -180,6 +205,11 @@ class Boy:
         self.jump_idx = 0
         self.fall_idx = 0
         self.anim_acc = 0.0
+
+        self.ground_y = self.y  # 시작 y를 바닥으로 사용
+        self.vy = 0.0
+        self.g = -1200.0  # 중력(픽셀/초^2) - 필요하면 숫자만 바꿔
+        self.jump_speed = 600.0  # 점프 초기속도(픽셀/초)
 
         #  상태 객체
         self.IDLE = Idle(self)
