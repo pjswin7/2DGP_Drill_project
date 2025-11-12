@@ -28,8 +28,7 @@ ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 8
 
 
-GRAVITY_MPS2 = 9.8
-GRAVITY_PPS2 = GRAVITY_MPS2 * PIXEL_PER_METER
+
 GRAVITY_PPS2 = 1200.0
 JUMP_SPEED_PPS = 560.0
 
@@ -123,10 +122,8 @@ class Jump:
         self.boy = boy
 
     def enter(self, e):
-        self.boy.current_row = 2
         if not hasattr(self.boy, 'vy'):
             self.boy.vy = 0.0
-        self.boy.vy = 600.0
         self.boy.vy = JUMP_SPEED_PPS
         self.boy.anim = self.boy.jump_images
         self.boy.max_frames = len(self.boy.anim)
@@ -165,7 +162,6 @@ class Fall:
         self.boy = boy
 
     def enter(self, e):
-        self.boy.current_row = 3
         self.boy.anim = self.boy.fall_images
         self.boy.max_frames = len(self.boy.anim)
         self.boy.frame = 0
@@ -232,11 +228,6 @@ class Boy:
         self.anim_acc = 0.0
 
         self.ground_y = self.y
-        self.vy = 0.0
-        self.g = -1200.0
-        self.jump_speed = 600.0
-        self.run_px_per_sec = 300.0
-        self.air_vx = 0.0
 
         self.anim = self.images
         self.max_frames = len(self.anim)
