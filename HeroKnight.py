@@ -27,6 +27,10 @@ TIME_PER_ACTION   = 0.5
 ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 8
 
+ROLL_SPEED_PPS   = RUN_SPEED_PPS * 2.0
+ROLL_DURATION    = 0.45
+ROLL_COOLTIME    = 10.0                  #  구르기만 10초 쿨타임
+
 
 
 GRAVITY_PPS2 = 1200.0
@@ -43,6 +47,7 @@ def left_down(e):   return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1]
 def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1].key == SDLK_LEFT
 
 def space_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_SPACE
+def up_down(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_UP
 def jump_done(e):   return e[0] == 'JUMP_DONE'
 def fall_done(e):   return e[0] == 'FALL_DONE'
 def landed_run(e):   return e[0] == 'LANDED_RUN'     # 착지 + 이동중
@@ -198,6 +203,40 @@ class Fall:
         self.boy.draw_current_frame()
 
 
+class Roll:
+    def __init__(self, boy):
+        self.boy = boy
+        self.elapsed = 0.0
+
+    def enter(self, e):
+        self.boy.anim = self.boy.roll_images
+        self.boy.max_frames = len(self.boy.anim)
+        self.boy.frame = 0
+        self.elapsed = 0.0
+        if self.boy.face_dir != 0:
+            self.boy.dir = self.boy.face_dir
+
+    def exit(self, e):
+        pass
+
+    def do(self):
+        dt = game_framework.frame_time
+        if dt > MAX_DT: dt = MAX_DT
+        self.elapsed += dt
+
+        self.boy.frame = (self.boy.frame
+                          + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
+        self.boy.x += self.boy.dir * ROLL_SPEED_PPS * dt
+        self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
+
+        if self.elapsed >= ROLL_DURATION:
+            next_state = self.boy.RUN if self.boy.dir != 0 else self.boy.IDLE
+            self.boy.state_machine.change_state(next_state)
+
+    def draw(self):
+        self.boy.draw_current_frame()
+
+
 
 
 
@@ -206,6 +245,10 @@ class Boy:
     def __init__(self):
         self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]
         self.run_images = [load_image(p('HeroKnight', 'Run', f'HeroKnight_Run_{i}.png')) for i in range(10)]
+        self.roll_images = [load_image(p('HeroKnight', 'Roll', f'HeroKnight_Roll_{i}.png')) for i in range(9)]
+
+
+
 
 
         self.JUMP_LAST = 1
@@ -232,32 +275,42 @@ class Boy:
         self.anim = self.images
         self.max_frames = len(self.anim)
 
+        self.roll_cool = 0.0
+
         self.IDLE = Idle(self)
         self.RUN = Run(self)
         self.JUMP = Jump(self)
         self.FALL = Fall(self)
+        self.ROLL = Roll(self)
 
         self.rules = {
             self.IDLE: {
-                right_down: self.RUN, left_down: self.RUN,
-                space_down: self.JUMP,
+                right_down: self.RUN,
+                left_down: self.RUN,
+                up_down: self.JUMP,
             },
             self.RUN: {
-                right_up: self.IDLE, left_up: self.IDLE,
-                right_down: self.RUN, left_down: self.RUN,
-                space_down: self.JUMP,
+                right_up: self.IDLE,
+                left_up: self.IDLE,
+                right_down: self.RUN,
+                left_down: self.RUN,
+                up_down: self.JUMP,
             },
             self.JUMP: {
-                right_down: self.JUMP, left_down: self.JUMP,
+                right_down: self.JUMP,
+                left_down: self.JUMP,
                 jump_done: self.FALL,
             },
             self.FALL: {
-                right_down: self.FALL, left_down: self.FALL,
+                right_down: self.FALL,
+                left_down: self.FALL,
                 landed_run: self.RUN,
                 landed_idle: self.IDLE,
             },
         }
 
+
+        self.rules[self.ROLL] = {}
         self.state_machine = StateMachine(self.IDLE, self.rules)
 
     def draw_current_frame(self):
@@ -283,20 +336,26 @@ class Boy:
 
     def handle_event(self, e):
         self.state_machine.handle_state_event(('INPUT', e))
+
         if e.type == SDL_KEYDOWN:
             if e.key == SDLK_RIGHT:
-                self.dir = 1
+                self.dir = 1;
                 self.face_dir = 1
             elif e.key == SDLK_LEFT:
-                self.dir = -1
+                self.dir = -1;
                 self.face_dir = -1
+            elif e.key == SDLK_SPACE:
+                if (self.state_machine.cur_state not in (self.JUMP, self.FALL, self.ROLL)
+                        and self.roll_cool <= 0.0):  # 구르기만 쿨
+                    self.state_machine.change_state(self.ROLL)
+                    self.roll_cool = ROLL_COOLTIME
         if e.type == SDL_KEYUP:
-            if e.key == SDLK_RIGHT and self.dir == 1:
-                self.dir = 0
-            if e.key == SDLK_LEFT and self.dir == -1:
-                self.dir = 0
+            if e.key == SDLK_RIGHT and self.dir == 1: self.dir = 0
+            if e.key == SDLK_LEFT and self.dir == -1: self.dir = 0
 
     def update(self):
+        if self.roll_cool > 0.0:
+            self.roll_cool = max(0.0, self.roll_cool - game_framework.frame_time)
         self.state_machine.update()
 
     def draw(self):

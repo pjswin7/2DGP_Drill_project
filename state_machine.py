@@ -6,6 +6,8 @@ class StateMachine:
 
     def handle_state_event(self, state_event):
         # 첫 번째 방식(직접 인덱싱) 사용: 현재 상태의 전이 줄만 검사
+        if self.cur_state not in self.rules:  # [ADD]
+            return  # [ADD]
         for check_event in self.rules[self.cur_state].keys():
             if check_event(state_event):
                 next_state = self.rules[self.cur_state][check_event]
