@@ -15,8 +15,8 @@ boy = Boy()
 
 running = True
 
-current_time = time.time()      # [ADD]
-MAX_DT = 1.0 / 30.0             # [ADD] HeroKnight와 동일 상한
+current_time = time.time()
+MAX_DT = 1.0 / 30.0
 
 while running:
 
