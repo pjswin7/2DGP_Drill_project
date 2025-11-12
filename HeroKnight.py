@@ -1,5 +1,6 @@
 from pico2d import *
 import os
+import game_framework 
 
 
 
@@ -12,6 +13,26 @@ from state_machine import StateMachine
 BASE = os.path.dirname(__file__)
 def p(*names):
     return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
+
+
+PIXEL_PER_METER = (10.0 / 0.3)
+
+RUN_SPEED_KMPH = 20.0
+RUN_SPEED_MPM  = (RUN_SPEED_KMPH * 1000.0 / 60.0)
+RUN_SPEED_MPS  = (RUN_SPEED_MPM / 60.0)
+RUN_SPEED_PPS  = (RUN_SPEED_MPS * PIXEL_PER_METER)
+
+
+TIME_PER_ACTION   = 0.5
+ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
+FRAMES_PER_ACTION = 8
+
+
+GRAVITY_MPS2 = 9.8
+GRAVITY_PPS2 = GRAVITY_MPS2 * PIXEL_PER_METER
+
+# dt 스파이크 상한 (초) — 30fps보다 긴 프레임은 이 값까지만 처리
+MAX_DT = 1.0 / 30.0
 
 
 
