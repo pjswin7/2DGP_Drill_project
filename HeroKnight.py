@@ -207,14 +207,14 @@ class Roll:
     def __init__(self, boy):
         self.boy = boy
         self.elapsed = 0.0
+        self.move_dir = 0
 
     def enter(self, e):
         self.boy.anim = self.boy.roll_images
         self.boy.max_frames = len(self.boy.anim)
         self.boy.frame = 0
         self.elapsed = 0.0
-        if self.boy.face_dir != 0:
-            self.boy.dir = self.boy.face_dir
+        self.move_dir = self.boy.dir if self.boy.dir != 0 else self.boy.face_dir
 
     def exit(self, e):
         pass
@@ -222,12 +222,15 @@ class Roll:
     def do(self):
         dt = game_framework.frame_time
         if dt > MAX_DT: dt = MAX_DT
-        self.elapsed += dt
 
+        self.elapsed += dt
         self.boy.frame = (self.boy.frame
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
-        self.boy.x += self.boy.dir * ROLL_SPEED_PPS * dt
+
+
+        self.boy.x += self.move_dir * ROLL_SPEED_PPS * dt
         self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
+
 
         if self.elapsed >= ROLL_DURATION:
             next_state = self.boy.RUN if self.boy.dir != 0 else self.boy.IDLE
@@ -297,9 +300,7 @@ class Boy:
                 up_down: self.JUMP,
             },
             self.JUMP: {
-                right_down: self.JUMP,
-                left_down: self.JUMP,
-                jump_done: self.FALL,
+
             },
             self.FALL: {
                 right_down: self.FALL,
@@ -307,10 +308,11 @@ class Boy:
                 landed_run: self.RUN,
                 landed_idle: self.IDLE,
             },
+            self.ROLL: {},
         }
 
 
-        self.rules[self.ROLL] = {}
+
         self.state_machine = StateMachine(self.IDLE, self.rules)
 
     def draw_current_frame(self):
