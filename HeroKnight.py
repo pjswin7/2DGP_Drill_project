@@ -22,6 +22,8 @@ RUN_SPEED_MPM  = (RUN_SPEED_KMPH * 1000.0 / 60.0)
 RUN_SPEED_MPS  = (RUN_SPEED_MPM / 60.0)
 RUN_SPEED_PPS  = (RUN_SPEED_MPS * PIXEL_PER_METER)
 
+ATTACK_DURATION = 0.45
+
 
 TIME_PER_ACTION   = 0.5
 ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
@@ -258,6 +260,7 @@ class Attack:
 
         self.boy.anim = self.boy.attack1 if self.pick == 1 else self.boy.attack2
         self.boy.max_frames = len(self.boy.anim)
+        self.fps = self.boy.max_frames / ATTACK_DURATION
 
     def exit(self, e):
         # 이동키가 눌려 있었다면 원래 방향 복구
@@ -266,9 +269,9 @@ class Attack:
     def do(self):
 
         now = get_time()
-        dt = now - self.boy.prev_time
+        dt = min(now - self.boy.prev_time, MAX_DT)
         self.boy.prev_time = now
-        self.boy.frame += 12 * dt
+        self.boy.frame += self.fps * dt
         if self.boy.frame >= self.boy.max_frames:
 
             if self.boy.dir == 0:
