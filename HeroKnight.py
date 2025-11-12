@@ -48,6 +48,7 @@ def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1]
 
 def space_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_SPACE
 def up_down(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_UP
+def a_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_a
 def jump_done(e):   return e[0] == 'JUMP_DONE'
 def fall_done(e):   return e[0] == 'FALL_DONE'
 def landed_run(e):   return e[0] == 'LANDED_RUN'     # 착지 + 이동중
@@ -241,6 +242,50 @@ class Roll:
 
 
 
+class Attack:
+    def __init__(self, boy):
+        self.boy = boy
+
+    def enter(self, e):
+        import random
+        # 어떤 공격을 쓸지 결정(1회)
+        self.pick = random.choice([1, 2])
+        self.boy.frame = 0
+        self.boy.prev_time = get_time()
+        # 공격 중에는 수평 이동 정지
+        self.saved_dir = self.boy.dir
+        self.boy.dir = 0
+
+        self.boy.anim = self.boy.attack1 if self.pick == 1 else self.boy.attack2
+        self.boy.max_frames = len(self.boy.anim)
+
+    def exit(self, e):
+        # 이동키가 눌려 있었다면 원래 방향 복구
+        self.boy.dir = self.saved_dir
+
+    def do(self):
+
+        now = get_time()
+        dt = now - self.boy.prev_time
+        self.boy.prev_time = now
+        self.boy.frame += 12 * dt
+        if self.boy.frame >= self.boy.max_frames:
+
+            if self.boy.dir == 0:
+                self.boy.state_machine.change_state(self.boy.IDLE)
+            else:
+                self.boy.state_machine.change_state(self.boy.RUN)
+
+    def draw(self):
+        f = int(self.boy.frame) % self.boy.max_frames
+        img = self.boy.anim[f]
+        if self.boy.face_dir == 1:
+            img.draw(self.boy.x, self.boy.y)
+        else:
+            img.composite_draw(0, 'h', self.boy.x, self.boy.y)
+
+
+
 
 
 
@@ -249,6 +294,8 @@ class Boy:
         self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]
         self.run_images = [load_image(p('HeroKnight', 'Run', f'HeroKnight_Run_{i}.png')) for i in range(10)]
         self.roll_images = [load_image(p('HeroKnight', 'Roll', f'HeroKnight_Roll_{i}.png')) for i in range(9)]
+        self.attack1 = [load_image(p('HeroKnight', 'Attack1', f'HeroKnight_Attack1_{i}.png')) for i in range(6)]
+        self.attack2 = [load_image(p('HeroKnight', 'Attack2', f'HeroKnight_Attack2_{i}.png')) for i in range(6)]
 
 
 
@@ -285,14 +332,17 @@ class Boy:
         self.JUMP = Jump(self)
         self.FALL = Fall(self)
         self.ROLL = Roll(self)
+        self.ATTACK = Attack(self)
 
         self.rules = {
             self.IDLE: {
+                a_down: self.ATTACK,
                 right_down: self.RUN,
                 left_down: self.RUN,
                 up_down: self.JUMP,
             },
             self.RUN: {
+                a_down: self.ATTACK,
                 right_up: self.IDLE,
                 left_up: self.IDLE,
                 right_down: self.RUN,
@@ -337,6 +387,10 @@ class Boy:
                 img.composite_draw(0, 'h', self.x, self.y)
 
     def handle_event(self, e):
+        if isinstance(self.state_machine.cur_state, Attack):
+            self.state_machine.handle_state_event(('INPUT', e))
+            return
+
         self.state_machine.handle_state_event(('INPUT', e))
 
         if e.type == SDL_KEYDOWN:
