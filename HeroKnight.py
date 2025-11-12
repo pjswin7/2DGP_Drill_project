@@ -277,12 +277,7 @@ class Attack:
                 self.boy.state_machine.change_state(self.boy.RUN)
 
     def draw(self):
-        f = int(self.boy.frame) % self.boy.max_frames
-        img = self.boy.anim[f]
-        if self.boy.face_dir == 1:
-            img.draw(self.boy.x, self.boy.y)
-        else:
-            img.composite_draw(0, 'h', self.boy.x, self.boy.y)
+        self.boy.draw_current_frame()
 
 
 
