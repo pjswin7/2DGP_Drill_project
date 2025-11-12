@@ -30,6 +30,8 @@ FRAMES_PER_ACTION = 8
 
 GRAVITY_MPS2 = 9.8
 GRAVITY_PPS2 = GRAVITY_MPS2 * PIXEL_PER_METER
+GRAVITY_PPS2 = 1200.0
+JUMP_SPEED_PPS = 560.0
 
 # dt 스파이크 상한 (초) — 30fps보다 긴 프레임은 이 값까지만 처리
 MAX_DT = 1.0 / 30.0
@@ -125,6 +127,7 @@ class Jump:
         if not hasattr(self.boy, 'vy'):
             self.boy.vy = 0.0
         self.boy.vy = 600.0
+        self.boy.vy = JUMP_SPEED_PPS
         self.boy.anim = self.boy.jump_images
         self.boy.max_frames = len(self.boy.anim)
         self.boy.frame = 0
