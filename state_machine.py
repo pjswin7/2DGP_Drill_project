@@ -26,6 +26,8 @@ class StateMachine:
         # 그리기도 상태에 맡김
         self.cur_state.draw()
 
-    def change(self, new_state):
-        # 나중에 Run/Jump 같은 걸로 갈아끼울 때 사용
+    def change_state(self, new_state):
+        prev_state = self.cur_state
+        prev_state.exit(('INTERNAL', None))
         self.cur_state = new_state
+        self.cur_state.enter(('INTERNAL', None))
