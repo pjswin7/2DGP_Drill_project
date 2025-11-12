@@ -1,6 +1,9 @@
 from pico2d import *
 from grass import Grass
 from HeroKnight import Boy
+import time
+import game_framework
+
 
 
 open_canvas()
@@ -11,6 +14,10 @@ boy = Boy()
 
 
 running = True
+
+current_time = time.time()      # [ADD]
+MAX_DT = 1.0 / 30.0             # [ADD] HeroKnight와 동일 상한
+
 while running:
 
     events = get_events()
@@ -31,9 +38,17 @@ while running:
     grass.draw()
     boy.draw()
     update_canvas()
+    now = time.time()
+    dt = now - current_time
+    if dt > MAX_DT:
+        dt = MAX_DT
+    if dt < 0.0:
+        dt = 0.0
+    game_framework.frame_time = dt
+    current_time = now
 
 
-    delay(0)
+
 
 
 close_canvas()
