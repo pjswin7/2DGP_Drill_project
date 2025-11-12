@@ -107,6 +107,9 @@ class Run:
 
         self.boy.x += self.boy.dir * RUN_SPEED_PPS * dt
 
+        self.boy.x = max(self.boy.left_bound,
+                         min(self.boy.x, self.boy.right_bound))
+
     def draw(self):
         self.boy.draw_current_frame()
 
@@ -127,7 +130,7 @@ class Jump:
         self.boy.frame = 0
 
     def exit(self, e):
-           pass
+        pass
 
     def do(self):
         dt = game_framework.frame_time
@@ -138,6 +141,9 @@ class Jump:
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
 
         self.boy.x += self.boy.dir * RUN_SPEED_PPS * dt
+
+        self.boy.x = max(self.boy.left_bound,
+                         min(self.boy.x, self.boy.right_bound))
 
         self.boy.vy -= GRAVITY_PPS2 * dt
         self.boy.y += self.boy.vy * dt
@@ -173,6 +179,9 @@ class Fall:
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
 
         self.boy.x += self.boy.dir * RUN_SPEED_PPS * dt
+
+        self.boy.x = max(self.boy.left_bound,
+                         min(self.boy.x, self.boy.right_bound))
 
         self.boy.vy -= GRAVITY_PPS2 * dt
         self.boy.y  += self.boy.vy * dt
