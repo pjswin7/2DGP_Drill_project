@@ -425,9 +425,22 @@ class Boy:
             return
 
         if isinstance(self.state_machine.cur_state, Block):
-            if e.type == SDL_KEYUP and e.key == SDLK_s:
-                next_state = self.RUN if self.dir != 0 else self.IDLE
-                self.state_machine.change_state(next_state)
+
+            if e.type == SDL_KEYDOWN:
+                if e.key == SDLK_RIGHT:
+                    self.dir = 1
+                    self.face_dir = 1
+                elif e.key == SDLK_LEFT:
+                    self.dir = -1
+                    self.face_dir = -1
+            elif e.type == SDL_KEYUP:
+                if e.key == SDLK_RIGHT and self.dir == 1:
+                    self.dir = 0
+                elif e.key == SDLK_LEFT and self.dir == -1:
+                    self.dir = 0
+                elif e.key == SDLK_s:
+                    next_state = self.RUN if self.dir != 0 else self.IDLE
+                    self.state_machine.change_state(next_state)
             return
 
         self.state_machine.handle_state_event(('INPUT', e))
