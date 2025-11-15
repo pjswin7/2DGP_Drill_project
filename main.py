@@ -14,6 +14,9 @@ grass = Grass()
 boy = Boy()
 evil = EvilKnight()
 
+evil.y = boy.y + 29
+evil.ground_y = boy.ground_y + 29
+
 
 running = True
 
