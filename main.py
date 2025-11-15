@@ -1,6 +1,7 @@
 from pico2d import *
 from grass import Grass
 from HeroKnight import Boy
+from EvilKnight import EvilKnight
 import time
 import game_framework
 
@@ -11,6 +12,7 @@ open_canvas()
 
 grass = Grass()
 boy = Boy()
+evil = EvilKnight()
 
 
 running = True
@@ -32,11 +34,13 @@ while running:
 
     grass.update()
     boy.update()
+    evil.update()
 
 
     clear_canvas()
     grass.draw()
     boy.draw()
+    evil.draw()
     update_canvas()
     now = time.time()
     dt = now - current_time
