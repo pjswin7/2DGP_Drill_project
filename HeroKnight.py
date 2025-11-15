@@ -51,6 +51,7 @@ def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1]
 def space_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_SPACE
 def up_down(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_UP
 def a_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_a
+def s_down(e):      return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_s
 def jump_done(e):   return e[0] == 'JUMP_DONE'
 def fall_done(e):   return e[0] == 'FALL_DONE'
 def landed_run(e):   return e[0] == 'LANDED_RUN'     # 착지 + 이동중
@@ -285,6 +286,36 @@ class Attack:
 
 
 
+class Block:
+    def __init__(self, boy):
+        self.boy = boy
+
+    def enter(self, e):
+        self.boy.vy = 0.0
+        self.boy.y = self.boy.ground_y
+        self.boy.frame = 0
+        self.boy.prev_time = get_time()
+        self.boy.anim = self.boy.block_idle_images
+        self.boy.max_frames = len(self.boy.anim)
+
+    def exit(self, e):
+        pass
+
+    def do(self):
+        dt = game_framework.frame_time
+        if dt > MAX_DT:
+            dt = MAX_DT
+        self.boy.frame = (
+            self.boy.frame
+            + self.boy.max_frames * ACTION_PER_TIME * dt
+        ) % self.boy.max_frames
+
+    def draw(self):
+        self.boy.draw_current_frame()
+
+
+
+
 
 
 class Boy:
@@ -294,6 +325,7 @@ class Boy:
         self.roll_images = [load_image(p('HeroKnight', 'Roll', f'HeroKnight_Roll_{i}.png')) for i in range(9)]
         self.attack1 = [load_image(p('HeroKnight', 'Attack1', f'HeroKnight_Attack1_{i}.png')) for i in range(6)]
         self.attack2 = [load_image(p('HeroKnight', 'Attack2', f'HeroKnight_Attack2_{i}.png')) for i in range(6)]
+        self.block_idle_images = [load_image(p('HeroKnight', 'BlockIdle', f'HeroKnight_Block Idle_{i}.png')) for i in range(8)]
 
 
 
@@ -331,16 +363,19 @@ class Boy:
         self.FALL = Fall(self)
         self.ROLL = Roll(self)
         self.ATTACK = Attack(self)
+        self.BLOCK = Block(self)
 
         self.rules = {
             self.IDLE: {
                 a_down: self.ATTACK,
+                s_down: self.BLOCK,
                 right_down: self.RUN,
                 left_down: self.RUN,
                 up_down: self.JUMP,
             },
             self.RUN: {
                 a_down: self.ATTACK,
+                s_down: self.BLOCK,
                 right_up: self.IDLE,
                 left_up: self.IDLE,
                 right_down: self.RUN,
@@ -387,6 +422,12 @@ class Boy:
     def handle_event(self, e):
         if isinstance(self.state_machine.cur_state, Attack):
             self.state_machine.handle_state_event(('INPUT', e))
+            return
+
+        if isinstance(self.state_machine.cur_state, Block):
+            if e.type == SDL_KEYUP and e.key == SDLK_s:
+                next_state = self.RUN if self.dir != 0 else self.IDLE
+                self.state_machine.change_state(next_state)
             return
 
         self.state_machine.handle_state_event(('INPUT', e))
