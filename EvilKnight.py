@@ -21,13 +21,14 @@ RUN_SPEED_PPS  = (RUN_SPEED_MPS * PIXEL_PER_METER)
 ROLL_SPEED_PPS   = RUN_SPEED_PPS * 2.0
 ROLL_DURATION    = 0.45
 
-JUMP_DURATION    = 0.45
-FALL_DURATION    = 0.45
-
 TIME_PER_ACTION   = 0.5
 ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
 
-MAX_DT            = 1.0 / 30.0
+# 중력/점프 속도 (HeroKnight와 동일 값)
+GRAVITY_PPS2 = 1200.0
+JUMP_SPEED_PPS = 560.0
+
+MAX_DT = 1.0 / 30.0
 
 
 class Idle:
@@ -129,31 +130,34 @@ class Roll:
 class Jump:
     def __init__(self, knight):
         self.knight = knight
-        self.fps = 0.0
 
     def enter(self, e):
+        # 점프 시작 시 위로 쏘아 올리는 초기 속도
+        self.knight.vy = JUMP_SPEED_PPS
         self.knight.sheet = self.knight.jump_sheet
         self.knight.max_frames = self.knight.jump_frames
         self.knight.frame = 0.0
-        self.knight.prev_time = get_time()
-        self.fps = self.knight.max_frames / JUMP_DURATION
 
     def exit(self, e):
         pass
 
     def do(self):
-        now = get_time()
-        dt = now - self.knight.prev_time
+        dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT
-        if dt < 0.0:
-            dt = 0.0
 
-        self.knight.prev_time = now
-        self.knight.frame += self.fps * dt
+        # 애니메이션 프레임 진행
+        self.knight.frame = (
+            self.knight.frame
+            + self.knight.max_frames * ACTION_PER_TIME * dt
+        ) % self.knight.max_frames
 
-        if self.knight.frame >= self.knight.max_frames:
-            # 점프 모션이 끝나면 떨어지는 모션으로 전환
+        # 위로 올라갔다가, vy가 0이 되면 떨어지기 시작
+        self.knight.vy -= GRAVITY_PPS2 * dt
+        self.knight.y  += self.knight.vy * dt
+
+        if self.knight.vy <= 0:
+            # 상승이 끝나면 떨어지는 상태로
             self.knight.state_machine.change_state(self.knight.FALL)
 
     def draw(self):
@@ -163,32 +167,38 @@ class Jump:
 class Fall:
     def __init__(self, knight):
         self.knight = knight
-        self.fps = 0.0
 
     def enter(self, e):
         self.knight.sheet = self.knight.fall_sheet
         self.knight.max_frames = self.knight.fall_frames
         self.knight.frame = 0.0
-        self.knight.prev_time = get_time()
-        self.fps = self.knight.max_frames / FALL_DURATION
 
     def exit(self, e):
         pass
 
     def do(self):
-        now = get_time()
-        dt = now - self.knight.prev_time
+        dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT
-        if dt < 0.0:
-            dt = 0.0
 
-        self.knight.prev_time = now
-        self.knight.frame += self.fps * dt
+        # 애니메이션 프레임 진행
+        self.knight.frame = (
+            self.knight.frame
+            + self.knight.max_frames * ACTION_PER_TIME * dt
+        ) % self.knight.max_frames
 
-        if self.knight.frame >= self.knight.max_frames:
-            # 떨어지는 모션이 끝나면 다시 대기 상태로
-            self.knight.state_machine.change_state(self.knight.IDLE)
+        # 아래로 떨어지기
+        self.knight.vy -= GRAVITY_PPS2 * dt
+        self.knight.y  += self.knight.vy * dt
+
+        # 바닥에 닿으면 멈추고 Idle/Run으로 복귀
+        if self.knight.y <= self.knight.ground_y:
+            self.knight.y = self.knight.ground_y
+            self.knight.vy = 0.0
+            if self.knight.dir == 0:
+                self.knight.state_machine.change_state(self.knight.IDLE)
+            else:
+                self.knight.state_machine.change_state(self.knight.RUN)
 
     def draw(self):
         self.knight.draw_current_frame()
@@ -227,8 +237,8 @@ class EvilKnight:
         self.left_bound, self.right_bound = 30, 770
         self.ground_y = self.y
 
-        # 애니메이션용 시간 저장
-        self.prev_time = get_time()
+        # 수직 속도
+        self.vy = 0.0
 
         # 상태 객체들
         self.IDLE = Idle(self)
