@@ -21,10 +21,11 @@ RUN_SPEED_PPS  = (RUN_SPEED_MPS * PIXEL_PER_METER)
 ROLL_SPEED_PPS   = RUN_SPEED_PPS * 2.0
 ROLL_DURATION    = 0.45
 
+ATTACK_DURATION  = 0.45   # 공격 1회 재생 시간
+
 TIME_PER_ACTION   = 0.5
 ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
 
-# 중력/점프 속도 (HeroKnight와 동일 값)
 GRAVITY_PPS2 = 1200.0
 JUMP_SPEED_PPS = 560.0
 
@@ -98,7 +99,6 @@ class Roll:
         self.knight.max_frames = self.knight.roll_frames
         self.knight.frame = 0.0
         self.elapsed = 0.0
-        # 달리는 중이면 그 방향으로, 아니면 보고 있는 방향으로 굴러감
         self.move_dir = self.knight.dir if self.knight.dir != 0 else self.knight.face_dir
 
     def exit(self, e):
@@ -120,8 +120,59 @@ class Roll:
                             min(self.knight.x, self.knight.right_bound))
 
         if self.elapsed >= ROLL_DURATION:
-            # 이후에는 단순히 서 있게만 함(나중에 AI에서 수정 가능)
             self.knight.state_machine.change_state(self.knight.IDLE)
+
+    def draw(self):
+        self.knight.draw_current_frame()
+
+
+class Attack:
+    def __init__(self, knight):
+        self.knight = knight
+        self.fps = 0.0
+        self.saved_dir = 0
+
+    def enter(self, e):
+        import random
+        # 1번/2번 공격 중 하나를 한 번만 랜덤 선택
+        pick = random.choice([1, 2])
+
+        if pick == 1:
+            self.knight.sheet = self.knight.attack1_sheet
+            self.knight.max_frames = self.knight.attack1_frames
+        else:
+            self.knight.sheet = self.knight.attack2_sheet
+            self.knight.max_frames = self.knight.attack2_frames
+
+        self.knight.frame = 0.0
+        self.knight.prev_time = get_time()
+
+        self.saved_dir = self.knight.dir
+        self.knight.dir = 0          # 공격 중에는 이동 정지
+
+        self.fps = self.knight.max_frames / ATTACK_DURATION
+
+    def exit(self, e):
+        # 끝나면 원래 이동 방향 복구
+        self.knight.dir = self.saved_dir
+
+    def do(self):
+        now = get_time()
+        dt = now - self.knight.prev_time
+        if dt > MAX_DT:
+            dt = MAX_DT
+        if dt < 0.0:
+            dt = 0.0
+
+        self.knight.prev_time = now
+        self.knight.frame += self.fps * dt
+
+        if self.knight.frame >= self.knight.max_frames:
+            # 공격이 끝나면 서 있거나(Idle), 달리거나(Run) 중 하나로 복귀
+            if self.knight.dir == 0:
+                self.knight.state_machine.change_state(self.knight.IDLE)
+            else:
+                self.knight.state_machine.change_state(self.knight.RUN)
 
     def draw(self):
         self.knight.draw_current_frame()
@@ -132,7 +183,6 @@ class Jump:
         self.knight = knight
 
     def enter(self, e):
-        # 점프 시작 시 위로 쏘아 올리는 초기 속도
         self.knight.vy = JUMP_SPEED_PPS
         self.knight.sheet = self.knight.jump_sheet
         self.knight.max_frames = self.knight.jump_frames
@@ -146,18 +196,15 @@ class Jump:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 애니메이션 프레임 진행
         self.knight.frame = (
             self.knight.frame
             + self.knight.max_frames * ACTION_PER_TIME * dt
         ) % self.knight.max_frames
 
-        # 위로 올라갔다가, vy가 0이 되면 떨어지기 시작
         self.knight.vy -= GRAVITY_PPS2 * dt
         self.knight.y  += self.knight.vy * dt
 
         if self.knight.vy <= 0:
-            # 상승이 끝나면 떨어지는 상태로
             self.knight.state_machine.change_state(self.knight.FALL)
 
     def draw(self):
@@ -181,17 +228,14 @@ class Fall:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 애니메이션 프레임 진행
         self.knight.frame = (
             self.knight.frame
             + self.knight.max_frames * ACTION_PER_TIME * dt
         ) % self.knight.max_frames
 
-        # 아래로 떨어지기
         self.knight.vy -= GRAVITY_PPS2 * dt
         self.knight.y  += self.knight.vy * dt
 
-        # 바닥에 닿으면 멈추고 Idle/Run으로 복귀
         if self.knight.y <= self.knight.ground_y:
             self.knight.y = self.knight.ground_y
             self.knight.vy = 0.0
@@ -207,53 +251,56 @@ class Fall:
 class EvilKnight:
     def __init__(self):
         # 각 모션별 스프라이트 시트 로드
-        self.idle_sheet = load_image(p('_Idle.png'))
-        self.run_sheet  = load_image(p('_Run.png'))
-        self.roll_sheet = load_image(p('_Roll.png'))
-        self.jump_sheet = load_image(p('_Jump.png'))
-        self.fall_sheet = load_image(p('_JumpFallInbetween.png'))
+        self.idle_sheet   = load_image(p('_Idle.png'))
+        self.run_sheet    = load_image(p('_Run.png'))
+        self.roll_sheet   = load_image(p('_Roll.png'))
+        self.jump_sheet   = load_image(p('_Jump.png'))
+        self.fall_sheet   = load_image(p('_JumpFallInbetween.png'))
+        self.attack1_sheet = load_image(p('_Attack.png'))
+        self.attack2_sheet = load_image(p('_Attack2.png'))
 
         # 모든 시트는 120x80 기준의 프레임으로 잘려 있음
         self.frame_w = FRAME_W
         self.frame_h = FRAME_H
 
         # 각 모션별 프레임 개수(가로 길이에서 계산)
-        self.idle_frames = self.idle_sheet.w // self.frame_w
-        self.run_frames  = self.run_sheet.w  // self.frame_w
-        self.roll_frames = self.roll_sheet.w // self.frame_w
-        self.jump_frames = self.jump_sheet.w // self.frame_w
-        self.fall_frames = self.fall_sheet.w // self.frame_w
+        self.idle_frames    = self.idle_sheet.w    // self.frame_w
+        self.run_frames     = self.run_sheet.w     // self.frame_w
+        self.roll_frames    = self.roll_sheet.w    // self.frame_w
+        self.jump_frames    = self.jump_sheet.w    // self.frame_w
+        self.fall_frames    = self.fall_sheet.w    // self.frame_w
+        self.attack1_frames = self.attack1_sheet.w // self.frame_w
+        self.attack2_frames = self.attack2_sheet.w // self.frame_w
 
-        # 현재 재생 중인 시트/프레임 정보
         self.sheet = self.idle_sheet
         self.max_frames = self.idle_frames
         self.frame = 0.0
 
-        # 위치/방향/크기
         self.scale = 2.0
         self.x, self.y = 600, 80
-        self.face_dir = -1  # 왼쪽을 보고 시작
-        self.dir = 0        # 수평 이동 방향
+        self.face_dir = -1
+        self.dir = 0
         self.left_bound, self.right_bound = 30, 770
         self.ground_y = self.y
 
-        # 수직 속도
         self.vy = 0.0
+        self.prev_time = get_time()
 
-        # 상태 객체들
-        self.IDLE = Idle(self)
-        self.RUN  = Run(self)
-        self.ROLL = Roll(self)
-        self.JUMP = Jump(self)
-        self.FALL = Fall(self)
+        self.IDLE   = Idle(self)
+        self.RUN    = Run(self)
+        self.ROLL   = Roll(self)
+        self.ATTACK = Attack(self)
+        self.JUMP   = Jump(self)
+        self.FALL   = Fall(self)
 
-        # 지금은 AI가 없으니 이벤트 기반 전이는 비워 둔다
+        # 아직 AI/입력 없음 → 규칙 비워둠
         self.rules = {
-            self.IDLE: {},
-            self.RUN: {},
-            self.ROLL: {},
-            self.JUMP: {},
-            self.FALL: {},
+            self.IDLE:   {},
+            self.RUN:    {},
+            self.ROLL:   {},
+            self.ATTACK: {},
+            self.JUMP:   {},
+            self.FALL:   {},
         }
         self.state_machine = StateMachine(self.IDLE, self.rules)
 
@@ -278,7 +325,7 @@ class EvilKnight:
             )
 
     def handle_event(self, e):
-        # 아직 플레이어 입력을 받지 않음(나중에 AI에서 직접 상태 전환 예정)
+        # 아직 플레이어 입력 없음(나중에 AI에서 직접 state 변경 예정)
         pass
 
     def update(self):
@@ -286,3 +333,7 @@ class EvilKnight:
 
     def draw(self):
         self.state_machine.draw()
+
+    # 나중에 테스트하거나 AI에서 호출하기 편하게 공격 트리거용 함수 하나 추가
+    def start_attack(self):
+        self.state_machine.change_state(self.ATTACK)
