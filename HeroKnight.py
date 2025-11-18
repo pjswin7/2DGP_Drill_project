@@ -357,7 +357,7 @@ class Boy:
 
         self.body_w_ratio = 0.35
         self.body_h_ratio = 0.75
-        self.bb_y_offset_ratio = 0.07
+        self.bb_y_offset_ratio = 0.11
 
         self.roll_cool = 0.0
 
