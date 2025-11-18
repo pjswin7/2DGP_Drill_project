@@ -419,6 +419,19 @@ class Boy:
             else:
                 img.composite_draw(0, 'h', self.x, self.y)
 
+    def get_bb(self):  # 현재 프레임과 스케일을 기준으로 히트박스(충돌 상자) 계산
+        fi = int(self.frame) % self.max_frames
+        img = self.anim[fi]
+        w = img.w * self.scale
+        h = img.h * self.scale
+        half_w = w / 2
+        half_h = h / 2
+        left = self.x - half_w
+        bottom = self.y - half_h
+        right = self.x + half_w
+        top = self.y + half_h
+        return left, bottom, right, top
+
     def handle_event(self, e):
         if isinstance(self.state_machine.cur_state, Attack):
             self.state_machine.handle_state_event(('INPUT', e))
@@ -468,3 +481,5 @@ class Boy:
 
     def draw(self):
         self.state_machine.draw()
+        left, bottom, right, top = self.get_bb()
+        draw_rectangle(left, bottom, right, top)
