@@ -276,9 +276,10 @@ class EvilKnight:
         self.max_frames = self.idle_frames
         self.frame = 0.0
 
-        self.body_w_ratio = 0.35
-        self.body_h_ratio = 0.75
-        self.bb_y_offset_ratio = 0.05
+        self.body_w_ratio = 0.22
+        self.body_h_ratio = 0.60
+        self.bb_y_offset_ratio = 0.20
+        self.bb_x_offset_ratio = 0.05
 
         self.scale = 2.0
         self.x, self.y = 600, 80
@@ -338,12 +339,15 @@ class EvilKnight:
         half_w = w / 2
         half_h = h / 2
 
-        offset = full_h * self.bb_y_offset_ratio
-        cy = self.y - offset
+        offset_y = full_h * self.bb_y_offset_ratio
+        cy = self.y - offset_y
 
-        left = self.x - half_w
+        offset_x = full_w * self.bb_x_offset_ratio
+        cx = self.x + offset_x
+
+        left = cx - half_w
         bottom = cy - half_h
-        right = self.x + half_w
+        right = cx + half_w
         top = cy + half_h
         return left, bottom, right, top
 
