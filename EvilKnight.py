@@ -276,6 +276,10 @@ class EvilKnight:
         self.max_frames = self.idle_frames
         self.frame = 0.0
 
+        self.body_w_ratio = 0.35
+        self.body_h_ratio = 0.75
+        self.bb_y_offset_ratio = 0.05
+
         self.scale = 2.0
         self.x, self.y = 600, 80
         self.face_dir = -1
@@ -324,18 +328,47 @@ class EvilKnight:
                 self.x, self.y, dw, dh
             )
 
+    def get_bb(self):
+        full_w = self.frame_w * self.scale
+        full_h = self.frame_h * self.scale
 
+        w = full_w * self.body_w_ratio
+        h = full_h * self.body_h_ratio
 
-    def get_bb(self):  #  EvilKnight 전신을 덮는 히트박스(충돌 상자) 계산
-        w = self.frame_w * self.scale
-        h = self.frame_h * self.scale
         half_w = w / 2
         half_h = h / 2
-        left   = self.x - half_w
-        bottom = self.y - half_h
-        right  = self.x + half_w
-        top    = self.y + half_h
+
+        offset = full_h * self.bb_y_offset_ratio
+        cy = self.y - offset
+
+        left = self.x - half_w
+        bottom = cy - half_h
+        right = self.x + half_w
+        top = cy + half_h
         return left, bottom, right, top
+
+    def get_attack_bb(self):
+        if not isinstance(self.state_machine.cur_state, Attack):
+            return None
+
+        full_w = self.frame_w * self.scale
+        full_h = self.frame_h * self.scale
+
+        body_w = full_w * self.body_w_ratio
+        sword_w = body_w * 0.9
+        sword_h = full_h * 0.5
+
+        cx = self.x + self.face_dir * (body_w * 0.5 + sword_w * 0.5)
+        cy = self.y + full_h * 0.1
+
+        half_w = sword_w / 2
+        half_h = sword_h / 2
+        left   = cx - half_w
+        bottom = cy - half_h
+        right  = cx + half_w
+        top    = cy + half_h
+        return left, bottom, right, top
+
 
     def handle_event(self, e):
         # 아직 플레이어 입력 없음(나중에 AI에서 직접 state 변경 예정)
@@ -348,6 +381,10 @@ class EvilKnight:
         self.state_machine.draw()
         left, bottom, right, top = self.get_bb()
         draw_rectangle(left, bottom, right, top)
+
+        atk_bb = self.get_attack_bb()
+        if atk_bb is not None:
+            draw_rectangle(*atk_bb)
 
     # 나중에 테스트하거나 AI에서 호출하기 편하게 공격 트리거용 함수 하나 추가
     def start_attack(self):
