@@ -357,6 +357,7 @@ class Boy:
 
         self.body_w_ratio = 0.35
         self.body_h_ratio = 0.75
+        self.bb_y_offset_ratio = 0.07
 
         self.roll_cool = 0.0
 
@@ -425,16 +426,23 @@ class Boy:
     def get_bb(self):
         fi = int(self.frame) % self.max_frames
         img = self.anim[fi]
+
         full_w = img.w * self.scale
         full_h = img.h * self.scale
+
         w = full_w * self.body_w_ratio
         h = full_h * self.body_h_ratio
+
         half_w = w / 2
         half_h = h / 2
+
+        offset = full_h * self.bb_y_offset_ratio
+        cy = self.y - offset
+
         left = self.x - half_w
-        bottom = self.y - half_h
+        bottom = cy - half_h
         right = self.x + half_w
-        top = self.y + half_h
+        top = cy + half_h
         return left, bottom, right, top
 
     def get_attack_bb(self):
