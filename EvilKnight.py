@@ -324,6 +324,19 @@ class EvilKnight:
                 self.x, self.y, dw, dh
             )
 
+
+
+    def get_bb(self):  #  EvilKnight 전신을 덮는 히트박스(충돌 상자) 계산
+        w = self.frame_w * self.scale
+        h = self.frame_h * self.scale
+        half_w = w / 2
+        half_h = h / 2
+        left   = self.x - half_w
+        bottom = self.y - half_h
+        right  = self.x + half_w
+        top    = self.y + half_h
+        return left, bottom, right, top
+
     def handle_event(self, e):
         # 아직 플레이어 입력 없음(나중에 AI에서 직접 state 변경 예정)
         pass
@@ -333,6 +346,8 @@ class EvilKnight:
 
     def draw(self):
         self.state_machine.draw()
+        left, bottom, right, top = self.get_bb()
+        draw_rectangle(left, bottom, right, top)
 
     # 나중에 테스트하거나 AI에서 호출하기 편하게 공격 트리거용 함수 하나 추가
     def start_attack(self):
