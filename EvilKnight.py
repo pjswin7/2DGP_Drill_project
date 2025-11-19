@@ -417,7 +417,7 @@ class EvilKnight:
 
         # 1단계: 왼쪽으로 조금 달린 뒤 → 오른쪽으로 방향 전환
         elif self.demo_phase == 1:
-            if elapsed > 1.2:
+            if elapsed > 2.4:
                 self.dir = 1
                 self.face_dir = 1
                 # RUN 상태 유지, 방향만 바뀜
