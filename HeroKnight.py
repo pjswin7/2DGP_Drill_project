@@ -255,9 +255,13 @@ class Attack:
         self.pick = random.choice([1, 2])
         self.boy.frame = 0
         self.boy.prev_time = get_time()
+
         # 공격 중에는 수평 이동 정지
         self.saved_dir = self.boy.dir
         self.boy.dir = 0
+
+        # 이번 공격 동안은 아직 한 번도 맞추지 않은 상태
+        self.boy.did_hit = False
 
         self.boy.anim = self.boy.attack1 if self.pick == 1 else self.boy.attack2
         self.boy.max_frames = len(self.boy.anim)
@@ -360,6 +364,10 @@ class Boy:
         self.bb_y_offset_ratio = 0.09
 
         self.roll_cool = 0.0
+
+        self.max_hp = 100
+        self.hp = self.max_hp
+        self.did_hit = False
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)

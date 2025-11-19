@@ -135,8 +135,6 @@ class Attack:
     def enter(self, e):
         import random
 
-        # next_attack_type 이 1 또는 2면 그 모션을 강제로 사용,
-        # 0이면 원래처럼 랜덤 선택
         if self.knight.next_attack_type in (1, 2):
             pick = self.knight.next_attack_type
             self.knight.next_attack_type = 0  # 한 번 쓰고 나면 다시 랜덤 모드
@@ -156,6 +154,9 @@ class Attack:
 
         self.saved_dir = self.knight.dir
         self.knight.dir = 0  # 공격 중에는 이동 정지
+
+        # 이번 공격 동안은 아직 한 번도 맞추지 않은 상태
+        self.knight.did_hit = False
 
         self.fps = self.knight.max_frames / ATTACK_DURATION
 
@@ -298,6 +299,10 @@ class EvilKnight:
 
         self.vy = 0.0
         self.prev_time = get_time()
+
+        self.max_hp = 100
+        self.hp = self.max_hp
+        self.did_hit = False  # 이번 공격 동안 이미 때렸는지 여부
 
         # --------- 공격 모션 강제 선택용 (0이면 랜덤) ----------
         self.next_attack_type = 0  # 0: 랜덤, 1: Attack1, 2: Attack2

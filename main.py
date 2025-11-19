@@ -49,6 +49,62 @@ def resolve_body_block(a, b):
     a.x += shift
 
 
+def rects_intersect(a, b):
+    al, ab, ar, at = a
+    bl, bb, br, bt = b
+    return not (ar <= bl or br <= al or at <= bb or bt <= ab)
+
+
+def resolve_attack(attacker, defender):
+    # 공격 히트박스가 없으면 패스
+    atk_bb = attacker.get_attack_bb()
+    if atk_bb is None:
+        return
+
+    def_bb = defender.get_bb()
+    if not rects_intersect(atk_bb, def_bb):
+        return
+
+    # 이번 공격에서 이미 한 번 때렸으면 더 이상 데미지 없음
+    if getattr(attacker, 'did_hit', False):
+        return
+
+    # HP 10 감소 (최소 0)
+    defender.hp = max(0, defender.hp - 10)
+    attacker.did_hit = True
+
+    print(f'Hit! {defender.__class__.__name__} HP = {defender.hp}')
+
+
+def draw_hp_bars(boy, evil):
+    cw = get_canvas_width()
+    ch = get_canvas_height()
+
+    bar_w = 100
+    bar_h = 10
+    margin = 20
+
+    # ----- Hero HP (왼쪽 상단, 왼쪽→오른쪽으로 줄어듦) -----
+    x1 = margin
+    y2 = ch - margin
+    x2 = x1 + bar_w
+    y1 = y2 - bar_h
+    draw_rectangle(x1, y1, x2, y2)
+    if boy.hp > 0:
+        cur_w = bar_w * boy.hp / boy.max_hp
+        draw_rectangle(x1, y1, x1 + cur_w, y2)
+
+    # ----- Evil HP (오른쪽 상단, 오른쪽→왼쪽으로 줄어듦) -----
+    x2 = cw - margin
+    x1 = x2 - bar_w
+    y2 = ch - margin
+    y1 = y2 - bar_h
+    draw_rectangle(x1, y1, x2, y2)
+    if evil.hp > 0:
+        cur_w = bar_w * evil.hp / evil.max_hp
+        draw_rectangle(x2 - cur_w, y1, x2, y2)
+
+
 open_canvas()
 
 
@@ -85,10 +141,14 @@ while running:
     resolve_ground(evil, grass)
     resolve_body_block(boy, evil)
 
+    resolve_attack(boy, evil)  # Hero가 Evil을 때리는 경우
+    resolve_attack(evil, boy)  # Evil이 Hero를 때리는 경우
+
     clear_canvas()
     grass.draw()
     boy.draw()
     evil.draw()
+    draw_hp_bars(boy, evil)
     update_canvas()
     now = time.time()
     dt = now - current_time
