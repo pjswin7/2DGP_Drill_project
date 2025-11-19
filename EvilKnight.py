@@ -285,10 +285,9 @@ class EvilKnight:
         self.max_frames = self.idle_frames
         self.frame = 0.0
 
-        self.body_w_ratio = 0.22
-        self.body_h_ratio = 0.60
-        self.bb_y_offset_ratio = 0.20
-        self.bb_x_offset_ratio = 0.05
+        self.body_w_ratio = 0.20
+        self.body_h_ratio = 0.75
+        self.bb_y_offset_ratio = 0.11
 
         self.scale = 2.0
         self.x, self.y = 600, 80
@@ -351,21 +350,21 @@ class EvilKnight:
         full_w = self.frame_w * self.scale
         full_h = self.frame_h * self.scale
 
+        # 비율에 따라 몸통 크기 결정
         w = full_w * self.body_w_ratio
         h = full_h * self.body_h_ratio
 
         half_w = w / 2
         half_h = h / 2
 
-        offset_y = full_h * self.bb_y_offset_ratio
-        cy = self.y - offset_y
+        # 세로 방향은 살짝 아래쪽으로 내려서(발 쪽 기준)
+        offset = full_h * self.bb_y_offset_ratio
+        cy = self.y - offset
 
-        offset_x = full_w * self.bb_x_offset_ratio
-        cx = self.x + offset_x
-
-        left = cx - half_w
+        # 가로 방향은 HeroKnight 처럼 self.x 기준으로 완전 좌우 대칭
+        left = self.x - half_w
         bottom = cy - half_h
-        right = cx + half_w
+        right = self.x + half_w
         top = cy + half_h
         return left, bottom, right, top
 
