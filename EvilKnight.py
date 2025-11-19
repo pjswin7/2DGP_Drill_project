@@ -376,11 +376,17 @@ class EvilKnight:
         full_h = self.frame_h * self.scale
 
         body_w = full_w * self.body_w_ratio
-        sword_w = body_w * 0.9
-        sword_h = full_h * 0.5
+
+
+        sword_w = body_w * 2.0
+        # 세로: 발 근처의 낮은 영역만 (너무 높게 잡지 않기)
+        sword_h = full_h * 0.3
+
 
         cx = self.x + self.face_dir * (body_w * 0.5 + sword_w * 0.5)
-        cy = self.y + full_h * 0.1
+
+
+        cy = self.y - full_h * 0.35
 
         half_w = sword_w / 2
         half_h = sword_h / 2
