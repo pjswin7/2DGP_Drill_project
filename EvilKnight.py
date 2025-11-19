@@ -286,8 +286,8 @@ class EvilKnight:
         self.frame = 0.0
 
         self.body_w_ratio = 0.20
-        self.body_h_ratio = 0.75
-        self.bb_y_offset_ratio = 0.11
+        self.body_h_ratio = 0.50
+        self.bb_y_offset_ratio = 0.25
 
         self.scale = 2.0
         self.x, self.y = 600, 80
