@@ -6,6 +6,8 @@ import time
 import game_framework
 
 
+
+
 def resolve_ground(obj, ground):
     ol, ob, or_, ot = obj.get_bb()
     gl, gb, gr, gt = ground.get_bb()
@@ -76,6 +78,8 @@ def resolve_attack(attacker, defender):
     print(f'Hit! {defender.__class__.__name__} HP = {defender.hp}')
 
 
+
+
 def draw_hp_bars(boy, evil):
     cw = get_canvas_width()
     ch = get_canvas_height()
@@ -103,7 +107,6 @@ def draw_hp_bars(boy, evil):
     if evil.hp > 0:
         cur_w = bar_w * evil.hp / evil.max_hp
         draw_rectangle(x2 - cur_w, y1, x2, y2)
-
 
 open_canvas()
 
