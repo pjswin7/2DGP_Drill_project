@@ -134,8 +134,15 @@ class Attack:
 
     def enter(self, e):
         import random
-        # 1번/2번 공격 중 하나를 한 번만 랜덤 선택
-        pick = random.choice([1, 2])
+
+        # next_attack_type 이 1 또는 2면 그 모션을 강제로 사용,
+        # 0이면 원래처럼 랜덤 선택
+        if self.knight.next_attack_type in (1, 2):
+            pick = self.knight.next_attack_type
+            self.knight.next_attack_type = 0  # 한 번 쓰고 나면 다시 랜덤 모드
+        else:
+            # 1번/2번 공격 중 하나를 랜덤 선택
+            pick = random.choice([1, 2])
 
         if pick == 1:
             self.knight.sheet = self.knight.attack1_sheet
@@ -148,7 +155,7 @@ class Attack:
         self.knight.prev_time = get_time()
 
         self.saved_dir = self.knight.dir
-        self.knight.dir = 0          # 공격 중에는 이동 정지
+        self.knight.dir = 0  # 공격 중에는 이동 정지
 
         self.fps = self.knight.max_frames / ATTACK_DURATION
 
@@ -248,6 +255,8 @@ class Fall:
         self.knight.draw_current_frame()
 
 
+
+
 class EvilKnight:
     def __init__(self):
         # 각 모션별 스프라이트 시트 로드
@@ -290,6 +299,15 @@ class EvilKnight:
 
         self.vy = 0.0
         self.prev_time = get_time()
+
+        # --------- 공격 모션 강제 선택용 (0이면 랜덤) ----------
+        self.next_attack_type = 0  # 0: 랜덤, 1: Attack1, 2: Attack2
+
+        # --------- 시작 시 자동 데모용 상태 ----------
+        self.demo_started = False
+        self.demo_phase = 0
+        self.demo_t0 = get_time()
+        self.demo_done = False
 
         self.IDLE   = Idle(self)
         self.RUN    = Run(self)
@@ -373,12 +391,88 @@ class EvilKnight:
         top    = cy + half_h
         return left, bottom, right, top
 
+    def run_demo(self):
+        # 한 번 데모 끝나면 더 이상 수행 X
+        if self.demo_done:
+            return
+
+        now = get_time()
+
+        # 처음 한 번만 시작 시간 설정
+        if not self.demo_started:
+            self.demo_started = True
+            self.demo_phase = 0
+            self.demo_t0 = now
+            return
+
+        elapsed = now - self.demo_t0
+
+        # 0단계: 잠깐 서 있다가 왼쪽으로 달리기 시작
+        if self.demo_phase == 0:
+            if elapsed > 0.3:
+                self.dir = -1
+                self.face_dir = -1
+                self.state_machine.change_state(self.RUN)
+                self.demo_phase = 1
+                self.demo_t0 = now
+
+        # 1단계: 왼쪽으로 조금 달린 뒤 → 오른쪽으로 방향 전환
+        elif self.demo_phase == 1:
+            if elapsed > 1.2:
+                self.dir = 1
+                self.face_dir = 1
+                # RUN 상태 유지, 방향만 바뀜
+                self.demo_phase = 2
+                self.demo_t0 = now
+
+        # 2단계: 오른쪽으로 조금 더 달린 뒤 → 점프 시작
+        elif self.demo_phase == 2:
+            if elapsed > 1.2:
+                self.dir = 0  # 점프는 제자리에서
+                self.state_machine.change_state(self.JUMP)
+                self.demo_phase = 3
+                self.demo_t0 = now
+
+        # 3단계: 점프/낙하가 어느 정도 진행되면 → 구르기
+        elif self.demo_phase == 3:
+            if elapsed > 1.0:
+                self.state_machine.change_state(self.ROLL)
+                self.demo_phase = 4
+                self.demo_t0 = now
+
+        # 4단계: 구르기 끝난 뒤 → 공격1 강제
+        elif self.demo_phase == 4:
+            if elapsed > 0.7:
+                self.next_attack_type = 1  # Attack1 강제
+                self.state_machine.change_state(self.ATTACK)
+                self.demo_phase = 5
+                self.demo_t0 = now
+
+        # 5단계: 첫 번째 공격 끝난 뒤 → 공격2 강제
+        elif self.demo_phase == 5:
+            if elapsed > 0.7:
+                self.next_attack_type = 2  # Attack2 강제
+                self.state_machine.change_state(self.ATTACK)
+                self.demo_phase = 6
+                self.demo_t0 = now
+
+        # 6단계: 두 번째 공격까지 끝나면 → Idle로 마무리
+        elif self.demo_phase == 6:
+            if elapsed > 0.7:
+                self.demo_done = True
+                self.dir = 0
+                self.state_machine.change_state(self.IDLE)
+
+
+
+
 
     def handle_event(self, e):
         # 아직 플레이어 입력 없음(나중에 AI에서 직접 state 변경 예정)
         pass
 
     def update(self):
+        self.run_demo()
         self.state_machine.update()
 
     def draw(self):
