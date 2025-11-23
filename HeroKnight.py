@@ -318,6 +318,38 @@ class Block:
         self.boy.draw_current_frame()
 
 
+class Die:
+    def __init__(self, boy):
+        self.boy = boy
+
+    def enter(self, e):
+        self.boy.dir = 0
+        if not hasattr(self.boy, 'vy'):
+            self.boy.vy = 0.0
+        self.boy.vy = 0.0
+
+        self.boy.anim = self.boy.death_images
+        self.boy.max_frames = len(self.boy.anim)
+        self.boy.frame = 0.0
+        self.boy.prev_time = get_time()
+
+    def exit(self, e):
+        pass
+
+    def do(self):
+        dt = game_framework.frame_time
+        if dt > MAX_DT:
+            dt = MAX_DT
+
+        # 한 번만 재생하고 마지막 프레임에 고정
+        self.boy.frame += self.boy.max_frames * ACTION_PER_TIME * dt
+        if self.boy.frame >= self.boy.max_frames:
+            self.boy.frame = self.boy.max_frames - 1
+
+    def draw(self):
+        self.boy.draw_current_frame()
+
+
 
 
 
@@ -330,6 +362,7 @@ class Boy:
         self.attack1 = [load_image(p('HeroKnight', 'Attack1', f'HeroKnight_Attack1_{i}.png')) for i in range(6)]
         self.attack2 = [load_image(p('HeroKnight', 'Attack2', f'HeroKnight_Attack2_{i}.png')) for i in range(6)]
         self.block_idle_images = [load_image(p('HeroKnight', 'BlockIdle', f'HeroKnight_Block Idle_{i}.png')) for i in range(8)]
+        self.death_images = [load_image(p('HeroKnight', 'Death', f'HeroKnight_Death_{i}.png')) for i in range(10)]
 
 
 
@@ -376,6 +409,7 @@ class Boy:
         self.ROLL = Roll(self)
         self.ATTACK = Attack(self)
         self.BLOCK = Block(self)
+        self.DIE = Die(self)
 
         self.rules = {
             self.IDLE: {
@@ -481,6 +515,31 @@ class Boy:
         return left, bottom, right, top
 
     def handle_event(self, e):
+
+        if self.hp <= 0:
+            return
+
+        self.state_machine.handle_state_event(('INPUT', e))
+
+        if e.type == SDL_KEYDOWN:
+            if e.key == SDLK_RIGHT:
+                self.dir = 1
+                self.face_dir = 1
+            elif e.key == SDLK_LEFT:
+                self.dir = -1
+                self.face_dir = -1
+            elif e.key == SDLK_SPACE:
+                if (self.state_machine.cur_state not in (self.JUMP, self.FALL, self.ROLL)
+                        and self.roll_cool <= 0.0):
+                    self.state_machine.change_state(self.ROLL)
+                    self.roll_cool = ROLL_COOLTIME
+        if e.type == SDL_KEYUP:
+            if e.key == SDLK_RIGHT and self.dir == 1:
+                self.dir = 0
+            if e.key == SDLK_LEFT and self.dir == -1:
+                self.dir = 0
+
+
         if isinstance(self.state_machine.cur_state, Attack):
             self.state_machine.handle_state_event(('INPUT', e))
             return
@@ -523,9 +582,20 @@ class Boy:
             if e.key == SDLK_LEFT and self.dir == -1: self.dir = 0
 
     def update(self):
+        if self.hp <= 0:
+            if self.state_machine.cur_state is not self.DIE:
+                self.dir = 0
+                if not hasattr(self, 'vy'):
+                    self.vy = 0.0
+                self.vy = 0.0
+                self.state_machine.change_state(self.DIE)
+            self.state_machine.update()
+            return
+
         if self.roll_cool > 0.0:
             self.roll_cool = max(0.0, self.roll_cool - game_framework.frame_time)
         self.state_machine.update()
+
 
     def draw(self):
         self.state_machine.draw()
