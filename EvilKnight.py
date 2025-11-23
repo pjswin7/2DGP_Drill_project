@@ -257,6 +257,37 @@ class Fall:
 
 
 
+class Die:
+    def __init__(self, knight):
+        self.knight = knight
+
+    def enter(self, e):
+        self.knight.dir = 0
+        self.knight.vy = 0.0
+
+        self.knight.sheet = self.knight.dead_sheet
+        self.knight.max_frames = self.knight.dead_frames
+        self.knight.frame = 0.0
+        self.knight.prev_time = get_time()
+
+    def exit(self, e):
+        pass
+
+    def do(self):
+        dt = game_framework.frame_time
+        if dt > MAX_DT:
+            dt = MAX_DT
+
+        # 한 번만 재생하고 마지막 프레임에 고정
+        self.knight.frame += self.knight.max_frames * ACTION_PER_TIME * dt
+        if self.knight.frame >= self.knight.max_frames:
+            self.knight.frame = self.knight.max_frames - 1
+
+    def draw(self):
+        self.knight.draw_current_frame()
+
+
+
 
 class EvilKnight:
     def __init__(self):
@@ -268,6 +299,7 @@ class EvilKnight:
         self.fall_sheet   = load_image(p('_JumpFallInbetween.png'))
         self.attack1_sheet = load_image(p('_Attack.png'))
         self.attack2_sheet = load_image(p('_Attack2.png'))
+        self.dead_sheet = load_image(p('_Death.png'))
 
         # 모든 시트는 120x80 기준의 프레임으로 잘려 있음
         self.frame_w = FRAME_W
@@ -281,6 +313,7 @@ class EvilKnight:
         self.fall_frames    = self.fall_sheet.w    // self.frame_w
         self.attack1_frames = self.attack1_sheet.w // self.frame_w
         self.attack2_frames = self.attack2_sheet.w // self.frame_w
+        self.dead_frames = self.dead_sheet.w // self.frame_w
 
         self.sheet = self.idle_sheet
         self.max_frames = self.idle_frames
@@ -319,6 +352,7 @@ class EvilKnight:
         self.ATTACK = Attack(self)
         self.JUMP   = Jump(self)
         self.FALL   = Fall(self)
+        self.DIE = Die(self)
 
         # 아직 AI/입력 없음 → 규칙 비워둠
         self.rules = {
@@ -328,6 +362,7 @@ class EvilKnight:
             self.ATTACK: {},
             self.JUMP:   {},
             self.FALL:   {},
+            self.DIE: {},
         }
         self.state_machine = StateMachine(self.IDLE, self.rules)
 
@@ -403,7 +438,7 @@ class EvilKnight:
 
     def run_demo(self):
         # 한 번 데모 끝나면 더 이상 수행 X
-        if self.demo_done:
+        if self.hp <= 0 or self.demo_done:
             return
 
         now = get_time()
@@ -482,6 +517,14 @@ class EvilKnight:
         pass
 
     def update(self):
+        if self.hp <= 0:
+            if self.state_machine.cur_state is not self.DIE:
+                self.dir = 0
+                self.vy = 0.0
+                self.state_machine.change_state(self.DIE)
+            self.state_machine.update()
+            return
+
         self.run_demo()
         self.state_machine.update()
 
