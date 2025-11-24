@@ -1,12 +1,11 @@
 from pico2d import *
-from grass import Grass
+from grass import Grass, CaveGround
 from HeroKnight import Boy
 from EvilKnight import EvilKnight
-from stage_background import Stage1Background
+from stage_background import Stage1Background, Stage2Background
 from portal import Portal
 import time
 import game_framework
-
 
 
 
@@ -112,9 +111,9 @@ def draw_hp_bars(boy, evil):
 
 open_canvas()
 
+stage = 1
+
 background = Stage1Background()
-
-
 grass = Grass()
 boy = Boy()
 evil = EvilKnight()
@@ -142,8 +141,27 @@ while running:
 
             if portal is not None:
                 if rects_intersect(boy.get_bb(), portal.get_bb()):
-                    print("포탈 진입! (여기서 동굴 스테이지로 전환 예정)")
-                    # TODO: 여기서 동굴 배경/땅으로 바꾸고, 새 스테이지 세팅해 줄 것
+                    if stage == 1:
+
+                        stage = 2
+                        background = Stage2Background()
+                        grass = CaveGround()
+
+
+                        portal = None
+
+                        evil = EvilKnight()
+
+                        evil.y = boy.y + 29
+                        evil.ground_y = boy.ground_y + 29
+
+
+                        boy.state_machine.change_state(boy.IDLE)
+                        boy.dir = 0
+                        boy.vy = 0.0
+                    elif stage == 2:
+
+                        print("2 → 3 스테이지 전환은 나중에 추가")
         else:
             boy.handle_event(e)
 
@@ -155,11 +173,11 @@ while running:
 
     # Evil이 죽으면 포탈 생성
     if evil.hp <= 0 and portal is None:
-        portal_x = get_canvas_width() - 80  # 오른쪽 끝 근처
-        portal_y_top = grass.top  # 땅 위쪽(y값)
+        portal_x = get_canvas_width() - 80
+        portal_y_top = grass.top
         portal = Portal(portal_x, portal_y_top)
 
-    # 포탈이 있으면 애니메이션 업데이트
+
     if portal is not None:
         portal.update()
 

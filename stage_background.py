@@ -20,3 +20,16 @@ class Stage1Background:
         cw = get_canvas_width()
         ch = get_canvas_height()
         self.image.draw(cw // 2, ch // 2)
+
+
+class Stage2Background:
+    def __init__(self):
+        self.image = load_image(os.path.join(BASE, 'cave', 'cave_background.png'))
+
+    def update(self):
+        pass
+
+    def draw(self):
+        cw = get_canvas_width()
+        ch = get_canvas_height()
+        self.image.draw(cw // 2, ch // 2)

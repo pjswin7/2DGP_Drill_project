@@ -42,3 +42,31 @@ class Grass:
         # 바닥 충돌 박스 확인용
         left, bottom, right, top = self.get_bb()
         draw_rectangle(left, bottom, right, top)
+
+
+class CaveGround:
+    def __init__(self):
+        self.tile = load_image(os.path.join(BASE, 'cave', 'cave_tile.png'))
+
+        self.top = 90
+        self.bottom = self.top - self.tile.h
+
+    def get_bb(self):
+        cw = get_canvas_width()
+        left = 0
+        right = cw
+        return left, self.bottom, right, self.top
+
+    def update(self):
+        pass
+
+    def draw(self):
+        cw = get_canvas_width()
+        w, h = self.tile.w, self.tile.h
+        y = (self.bottom + self.top) / 2
+        x = w // 2
+        while x < cw + w:
+            self.tile.draw(x, y)
+            x += w
+        left, bottom, right, top = self.get_bb()
+        draw_rectangle(left, bottom, right, top)
