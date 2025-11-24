@@ -32,4 +32,4 @@ class Stage2Background:
     def draw(self):
         cw = get_canvas_width()
         ch = get_canvas_height()
-        self.image.draw(cw // 2, ch // 2)
+        self.image.draw(cw // 2, ch // 2, cw, ch)
