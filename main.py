@@ -3,6 +3,7 @@ from grass import Grass
 from HeroKnight import Boy
 from EvilKnight import EvilKnight
 from stage_background import Stage1Background
+from portal import Portal
 import time
 import game_framework
 
@@ -121,6 +122,8 @@ evil = EvilKnight()
 evil.y = boy.y + 29
 evil.ground_y = boy.ground_y + 29
 
+portal = None
+
 
 running = True
 
@@ -135,15 +138,30 @@ while running:
             running = False
         elif e.type == SDL_KEYDOWN and e.key == SDLK_ESCAPE:
             running = False
+        elif e.type == SDL_KEYDOWN and e.key == SDLK_DOWN:
+
+            if portal is not None:
+                if rects_intersect(boy.get_bb(), portal.get_bb()):
+                    print("포탈 진입! (여기서 동굴 스테이지로 전환 예정)")
+                    # TODO: 여기서 동굴 배경/땅으로 바꾸고, 새 스테이지 세팅해 줄 것
         else:
             boy.handle_event(e)
-
 
 
     background.update()
     grass.update()
     boy.update()
     evil.update()
+
+    # Evil이 죽으면 포탈 생성
+    if evil.hp <= 0 and portal is None:
+        portal_x = get_canvas_width() - 80  # 오른쪽 끝 근처
+        portal_y_top = grass.top  # 땅 위쪽(y값)
+        portal = Portal(portal_x, portal_y_top)
+
+    # 포탈이 있으면 애니메이션 업데이트
+    if portal is not None:
+        portal.update()
 
     resolve_ground(boy, grass)
     resolve_ground(evil, grass)
@@ -155,6 +173,11 @@ while running:
     clear_canvas()
     background.draw()
     grass.draw()
+
+    if portal is not None:
+        portal.draw()
+
+
     boy.draw()
     evil.draw()
     draw_hp_bars(boy, evil)
