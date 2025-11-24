@@ -2,6 +2,7 @@ from pico2d import *
 from grass import Grass
 from HeroKnight import Boy
 from EvilKnight import EvilKnight
+from stage_background import Stage1Background
 import time
 import game_framework
 
@@ -110,6 +111,8 @@ def draw_hp_bars(boy, evil):
 
 open_canvas()
 
+background = Stage1Background()
+
 
 grass = Grass()
 boy = Boy()
@@ -136,6 +139,8 @@ while running:
             boy.handle_event(e)
 
 
+
+    background.update()
     grass.update()
     boy.update()
     evil.update()
@@ -148,6 +153,7 @@ while running:
     resolve_attack(evil, boy)  # Evil이 Hero를 때리는 경우
 
     clear_canvas()
+    background.draw()
     grass.draw()
     boy.draw()
     evil.draw()

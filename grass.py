@@ -2,12 +2,17 @@ from pico2d import *
 import os
 
 BASE = os.path.dirname(__file__)
-def p(*names):
-    return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
+
+# 케니(kenney) 타일 경로용 헬퍼
+def kenny_path(*names):
+    # 실제 폴더 구조: kenney_platformer-pack-redux / PNG / ...
+    return os.path.join(BASE, 'kenney_platformer-pack-redux', 'PNG', *names)
+
 
 class Grass:
     def __init__(self):
-        self.tile = load_image(p('EnvironmentTiles', 'Tile_1.png'))
+        # 1스테이지 땅: PNG/Ground/Grass/grass.png
+        self.tile = load_image(kenny_path('Ground', 'Grass', 'grass.png'))
 
     def get_bb(self):
         cw = get_canvas_width()
