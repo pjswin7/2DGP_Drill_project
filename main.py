@@ -1,8 +1,8 @@
 from pico2d import *
-from grass import Grass, CaveGround
+from grass import Grass, CaveGround, CastleGround
 from HeroKnight import Boy
 from EvilKnight import EvilKnight
-from stage_background import Stage1Background, Stage2Background
+from stage_background import Stage1Background, Stage2Background, Stage3Background
 from portal import Portal
 import time
 import game_framework
@@ -155,13 +155,32 @@ while running:
                         evil.y = boy.y + 29
                         evil.ground_y = boy.ground_y + 29
 
+                        boy.x = 120
+                        boy.y = boy.ground_y
+
 
                         boy.state_machine.change_state(boy.IDLE)
                         boy.dir = 0
                         boy.vy = 0.0
                     elif stage == 2:
+                        stage = 3
+                        background = Stage3Background()
+                        grass = CastleGround()
 
-                        print("2 → 3 스테이지 전환은 나중에 추가")
+                        portal = None
+
+                        evil = EvilKnight()
+                        evil.y = boy.y + 29
+                        evil.ground_y = boy.ground_y + 29
+
+                        # 3스테이지 시작 위치 (원하는 값으로 조정 가능)
+                        boy.x = 120
+                        boy.y = boy.ground_y
+                        boy.state_machine.change_state(boy.IDLE)
+                        boy.dir = 0
+                        boy.vy = 0.0
+
+
         else:
             boy.handle_event(e)
 

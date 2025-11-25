@@ -33,3 +33,18 @@ class Stage2Background:
         cw = get_canvas_width()
         ch = get_canvas_height()
         self.image.draw(cw // 2, ch // 2, cw, ch)
+
+
+
+class Stage3Background:
+    def __init__(self):
+        self.image = load_image(os.path.join(BASE, 'cave', 'rava_castle.png'))
+
+    def update(self):
+        pass
+
+    def draw(self):
+        cw = get_canvas_width()
+        ch = get_canvas_height()
+        # 화면을 꽉 채우도록 스케일
+        self.image.draw(cw // 2, ch // 2, cw, ch)
