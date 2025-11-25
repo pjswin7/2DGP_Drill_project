@@ -48,6 +48,8 @@ class CaveGround:
     def __init__(self):
         self.tile = load_image(os.path.join(BASE, 'cave', 'cave_tile.png'))
 
+        self.bottom_tile = load_image(os.path.join(BASE, 'cave', 'cave2_title.png'))
+
         self.top = 90
         self.bottom = self.top - self.tile.h
 
@@ -62,6 +64,17 @@ class CaveGround:
 
     def draw(self):
         cw = get_canvas_width()
+
+        bw, bh = self.bottom_tile.w, self.bottom_tile.h
+        y = bh // 2
+        while y < self.top:
+            x = bw // 2
+            while x < cw + bw:
+                self.bottom_tile.draw(x, y)
+                x += bw
+            y += bh
+
+
         w, h = self.tile.w, self.tile.h
         y = (self.bottom + self.top) / 2
         x = w // 2
