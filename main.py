@@ -207,6 +207,9 @@ while running:
     resolve_attack(boy, evil)  # Hero가 Evil을 때리는 경우
     resolve_attack(evil, boy)  # Evil이 Hero를 때리는 경우
 
+    if stage == 2:
+        background.handle_hazard_collision(boy, evil)
+
     clear_canvas()
     background.draw()
     grass.draw()
