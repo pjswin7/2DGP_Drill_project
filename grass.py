@@ -11,12 +11,17 @@ GROUND_TOP_Y = 90
 # 너무 파묻혀 보이면 값을 줄이면 된다.
 CAVE_GROUND_DROP = 20
 
+# 3스테이지 용암 타일을 서로 얼마나 겹쳐 그릴지 (픽셀)
+# 빈 칸이 보이면 값을 더 키우고, 너무 많이 겹치면 줄이면 된다.
+LAVA_TILE_OVERLAP = 25
+
 
 def kenny_path(*names):
     return os.path.join(BASE, 'kenney_platformer-pack-redux', 'PNG', *names)
 
 
 class Grass:
+    """1스테이지 기본 초원 바닥"""
     def __init__(self):
         self.tile = load_image(kenny_path('Ground', 'Grass', 'grass.png'))
 
@@ -49,6 +54,7 @@ class Grass:
 
 
 class CaveGround:
+    """2스테이지 동굴 바닥 (위에 플랫, 아래는 채우는 타일)"""
     def __init__(self):
         self.tile = load_image(os.path.join(BASE, 'cave', 'cave_tile.png'))
         self.bottom_tile = load_image(os.path.join(BASE, 'cave', 'cave2_title.png'))
@@ -97,10 +103,12 @@ class CaveGround:
 
 
 class CastleGround:
+    """3스테이지 성 앞 용암 바닥 – 새 타일을 1스테처럼 가로로 이어 붙임"""
     def __init__(self):
-        # 3스테이지 땅 타일 (cave_tile.png 재사용)
-        self.tile = load_image(os.path.join(BASE, 'cave', 'cave_tile.png'))
+        # 3스테이지 땅 타일 : 새 용암 바닥 타일 사용
+        self.tile = load_image(os.path.join(BASE, 'cave', 'lava_ground_cracked_tileset.png'))
 
+        # 1스테이지와 같은 높이에 땅 윗면(top)을 둔다.
         self.top = GROUND_TOP_Y
         self.bottom = self.top - self.tile.h
 
@@ -117,12 +125,19 @@ class CastleGround:
         cw = get_canvas_width()
         w, h = self.tile.w, self.tile.h
 
-        # 공중에 떠 있는 한 줄만 그리기
+        # 공중에 떠 있는 한 줄만 그리기 (1스테와 같은 방식)
         y = (self.bottom + self.top) / 2
-        x = w // 2
+
+        # 겹치기 적용: 한 타일의 오른쪽과 다음 타일의 왼쪽이
+        # LAVA_TILE_OVERLAP 만큼 서로 덮이도록 한다.
+        step = w - LAVA_TILE_OVERLAP
+
+        # 처음 타일은 왼쪽이 약간 화면 밖으로 나가도록 시작해서
+        # 왼쪽 끝에 틈이 생기지 않게 한다.
+        x = w // 2 - LAVA_TILE_OVERLAP
         while x < cw + w:
             self.tile.draw(x, y)
-            x += w
+            x += step
 
         # 충돌 박스 (땅 한 줄만)
         left, bottom, right, top = self.get_bb()
