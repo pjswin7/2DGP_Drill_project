@@ -8,16 +8,15 @@ import time
 import game_framework
 
 
-
 def resolve_ground(obj, ground):
     ol, ob, or_, ot = obj.get_bb()
     gl, gb, gr, gt = ground.get_bb()
 
-
+    # 수평으로 아예 안 겹치면 무시
     if or_ < gl or gr < ol:
         return
 
-
+    # 캐릭터가 땅 안으로 파고들었을 때만 위로 밀어 올림
     if ob < gt:
         dy = gt - ob
         obj.y += dy
@@ -44,7 +43,7 @@ def resolve_body_block(a, b):
     if at <= bb or bt <= ab:
         return
 
-
+    # a가 b의 왼쪽에 있으면 왼쪽으로, 아니면 오른쪽으로 밀어냄
     if a.x < b.x:
         shift = bl - ar
     else:
@@ -79,8 +78,6 @@ def resolve_attack(attacker, defender):
     print(f'Hit! {defender.__class__.__name__} HP = {defender.hp}')
 
 
-
-
 def draw_hp_bars(boy, evil):
     cw = get_canvas_width()
     ch = get_canvas_height()
@@ -109,6 +106,21 @@ def draw_hp_bars(boy, evil):
         cur_w = bar_w * evil.hp / evil.max_hp
         draw_rectangle(x2 - cur_w, y1, x2, y2)
 
+
+# [NEW] 땅 히트박스에 맞게 캐릭터를 자동으로 올려놓는 함수
+def place_on_ground(obj, ground):
+    """obj의 발(bottom)이 ground의 top에 딱 닿도록 y를 조정하고,
+    obj.ground_y도 함께 갱신한다."""
+    ol, ob, or_, ot = obj.get_bb()
+    gl, gb, gr, gt = ground.get_bb()
+
+    dy = gt - ob
+    obj.y += dy
+
+    if hasattr(obj, 'ground_y'):
+        obj.ground_y = obj.y
+
+
 open_canvas()
 
 stage = 1
@@ -118,11 +130,11 @@ grass = Grass()
 boy = Boy()
 evil = EvilKnight()
 
-evil.y = boy.y + 29
-evil.ground_y = boy.ground_y + 29
+# [NEW] 처음 시작할 때도 땅 위에 정확히 세우기
+place_on_ground(boy, grass)
+place_on_ground(evil, grass)
 
 portal = None
-
 
 running = True
 
@@ -142,27 +154,26 @@ while running:
             if portal is not None:
                 if rects_intersect(boy.get_bb(), portal.get_bb()):
                     if stage == 1:
-
+                        # -------- 스테이지 1 -> 2 (동굴) --------
                         stage = 2
                         background = Stage2Background()
                         grass = CaveGround()
-
 
                         portal = None
 
                         evil = EvilKnight()
 
-                        evil.y = boy.y + 29
-                        evil.ground_y = boy.ground_y + 29
-
+                        # x 위치만 정해주고, y는 땅 히트박스로 자동 정렬
                         boy.x = 120
-                        boy.y = boy.ground_y
-
+                        place_on_ground(boy, grass)
+                        place_on_ground(evil, grass)
 
                         boy.state_machine.change_state(boy.IDLE)
                         boy.dir = 0
                         boy.vy = 0.0
+
                     elif stage == 2:
+                        # -------- 스테이지 2 -> 3 (성+용암) --------
                         stage = 3
                         background = Stage3Background()
                         grass = CastleGround()
@@ -170,20 +181,17 @@ while running:
                         portal = None
 
                         evil = EvilKnight()
-                        evil.y = boy.y + 29
-                        evil.ground_y = boy.ground_y + 29
 
-                        # 3스테이지 시작 위치 (원하는 값으로 조정 가능)
                         boy.x = 120
-                        boy.y = boy.ground_y
+                        place_on_ground(boy, grass)
+                        place_on_ground(evil, grass)
+
                         boy.state_machine.change_state(boy.IDLE)
                         boy.dir = 0
                         boy.vy = 0.0
 
-
         else:
             boy.handle_event(e)
-
 
     background.update()
     grass.update()
@@ -193,13 +201,14 @@ while running:
     # Evil이 죽으면 포탈 생성
     if evil.hp <= 0 and portal is None:
         portal_x = get_canvas_width() - 80
+        # 포탈도 땅 위에서 시작
         portal_y_top = grass.top
         portal = Portal(portal_x, portal_y_top)
-
 
     if portal is not None:
         portal.update()
 
+    # 여전히 안전용으로 충돌 보정은 둔다
     resolve_ground(boy, grass)
     resolve_ground(evil, grass)
     resolve_body_block(boy, evil)
@@ -217,11 +226,11 @@ while running:
     if portal is not None:
         portal.draw()
 
-
     boy.draw()
     evil.draw()
     draw_hp_bars(boy, evil)
     update_canvas()
+
     now = time.time()
     dt = now - current_time
     if dt > MAX_DT:
@@ -230,9 +239,5 @@ while running:
         dt = 0.0
     game_framework.frame_time = dt
     current_time = now
-
-
-
-
 
 close_canvas()
