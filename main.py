@@ -71,8 +71,12 @@ def resolve_attack(attacker, defender):
     if getattr(attacker, 'did_hit', False):
         return
 
-    # HP 10 감소 (최소 0)
-    defender.hp = max(0, defender.hp - 10)
+    # HP 감소 + 피격 연출 (무적 포함)
+    if hasattr(defender, 'apply_damage'):
+        defender.apply_damage(10)
+    else:
+        defender.hp = max(0, defender.hp - 10)
+
     attacker.did_hit = True
 
     print(f'Hit! {defender.__class__.__name__} HP = {defender.hp}')

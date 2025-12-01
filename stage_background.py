@@ -63,10 +63,8 @@ class CaveStalactites:
 
             self.spawn_timer = random.uniform(1.0, 2.0)
 
-
         for s in self.stones:
             s.update()
-
 
         self.stones = [s for s in self.stones if s.active]
 
@@ -76,7 +74,6 @@ class CaveStalactites:
 
         margin = 40
         x = random.randint(margin, cw - margin)
-
 
         if Stalactite.image is not None:
             y = ch + Stalactite.image.h // 2
@@ -108,8 +105,12 @@ class CaveStalactites:
                 if sl > or_ or sr < ol or sb > ot or st < ob:
                     continue
 
-                # 맞으면 HP 15 깎기
-                obj.hp -= 15
+                # 맞으면 HP 15 깎기 + 피격 연출
+                if hasattr(obj, 'apply_damage'):
+                    obj.apply_damage(15)
+                else:
+                    obj.hp -= 15
+
                 hit_any = True
 
             # 누군가라도 맞았으면 이 종유석은 사라짐
@@ -150,7 +151,6 @@ class Stage2Background:
         self.image.draw(cw // 2, ch // 2, cw, ch)
         # 그 위에 종유석들 그림
         self.hazards.draw()
-
 
     def handle_hazard_collision(self, *targets):
         self.hazards.handle_collision(*targets)

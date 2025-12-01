@@ -41,6 +41,11 @@ JUMP_SPEED_PPS = 560.0
 # dt 스파이크 상한 (초) — 30fps보다 긴 프레임은 이 값까지만 처리
 MAX_DT = 1.0 / 30.0
 
+# [NEW] 피격 관련 상수
+HIT_EFFECT_DURATION = 2.0        # 2초 동안 깜빡
+HIT_KNOCKBACK_DURATION = 0.2     # 0.2초 동안 넉백
+HIT_KNOCKBACK_SPEED_PPS = 250.0  # 넉백 속도
+
 
 
 def right_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_RIGHT
@@ -364,10 +369,6 @@ class Boy:
         self.block_idle_images = [load_image(p('HeroKnight', 'BlockIdle', f'HeroKnight_Block Idle_{i}.png')) for i in range(8)]
         self.death_images = [load_image(p('HeroKnight', 'Death', f'HeroKnight_Death_{i}.png')) for i in range(10)]
 
-
-
-
-
         self.JUMP_LAST = 1
         self.FALL_LAST = 3
         self.jump_images = [load_image(p('HeroKnight', 'Jump', f'HeroKnight_Jump_{i}.png')) for i in range(self.JUMP_LAST + 1)]
@@ -401,6 +402,10 @@ class Boy:
         self.max_hp = 100
         self.hp = self.max_hp
         self.did_hit = False
+
+        # [NEW] 피격 효과 타이머
+        self.hit_timer = 0.0
+        self.knockback_timer = 0.0
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)
@@ -439,8 +444,6 @@ class Boy:
             },
             self.ROLL: {},
         }
-
-
 
         self.state_machine = StateMachine(self.IDLE, self.rules)
 
@@ -502,7 +505,6 @@ class Boy:
         sword_w = body_w * 0.9
         sword_h = full_h * 0.5
 
-
         cx = self.x + self.face_dir * (body_w * 0.5 + sword_w * 0.5)
         cy = self.y + full_h * 0.1
 
@@ -513,6 +515,22 @@ class Boy:
         right = cx + half_w
         top = cy + half_h
         return left, bottom, right, top
+
+    # [NEW] 피격 효과 시작
+    def start_hit_effect(self):
+        self.hit_timer = HIT_EFFECT_DURATION
+        self.knockback_timer = HIT_KNOCKBACK_DURATION
+
+    # [NEW] 데미지 처리 + 무적 시간
+    def apply_damage(self, amount):
+        # 이미 죽었거나 무적이면 무시
+        if self.hp <= 0:
+            return
+        if self.hit_timer > 0.0:
+            return
+
+        self.hp = max(0, self.hp - amount)
+        self.start_hit_effect()
 
     def handle_event(self, e):
 
@@ -538,7 +556,6 @@ class Boy:
                 self.dir = 0
             if e.key == SDLK_LEFT and self.dir == -1:
                 self.dir = 0
-
 
         if isinstance(self.state_machine.cur_state, Attack):
             self.state_machine.handle_state_event(('INPUT', e))
@@ -582,6 +599,19 @@ class Boy:
             if e.key == SDLK_LEFT and self.dir == -1: self.dir = 0
 
     def update(self):
+        dt = game_framework.frame_time
+        if dt > MAX_DT:
+            dt = MAX_DT
+
+        # [NEW] 피격 타이머/넉백 처리
+        if self.hit_timer > 0.0:
+            self.hit_timer = max(0.0, self.hit_timer - dt)
+        if self.knockback_timer > 0.0:
+            self.knockback_timer = max(0.0, self.knockback_timer - dt)
+            # 바라보는 방향의 반대(-face_dir)로 밀려남
+            self.x += -self.face_dir * HIT_KNOCKBACK_SPEED_PPS * dt
+            self.x = max(self.left_bound, min(self.x, self.right_bound))
+
         if self.hp <= 0:
             if self.state_machine.cur_state is not self.DIE:
                 self.dir = 0
@@ -596,9 +626,17 @@ class Boy:
             self.roll_cool = max(0.0, self.roll_cool - game_framework.frame_time)
         self.state_machine.update()
 
-
     def draw(self):
-        self.state_machine.draw()
+        # [NEW] 깜빡임: hit_timer 동안 일정 주기로 스프라이트 숨기기
+        visible = True
+        if self.hit_timer > 0.0:
+            elapsed = HIT_EFFECT_DURATION - self.hit_timer
+            if int(elapsed * 20) % 2 == 0:
+                visible = False
+
+        if visible:
+            self.state_machine.draw()
+
         left, bottom, right, top = self.get_bb()
         draw_rectangle(left, bottom, right, top)
         atk_bb = self.get_attack_bb()

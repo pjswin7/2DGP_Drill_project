@@ -31,6 +31,11 @@ JUMP_SPEED_PPS = 560.0
 
 MAX_DT = 1.0 / 30.0
 
+# [NEW] 피격 관련 상수
+HIT_EFFECT_DURATION = 2.0        # 2초 동안 깜빡
+HIT_KNOCKBACK_DURATION = 0.2     # 0.2초 동안 넉백
+HIT_KNOCKBACK_SPEED_PPS = 250.0  # 넉백 속도
+
 
 class Idle:
     def __init__(self, knight):
@@ -337,6 +342,10 @@ class EvilKnight:
         self.hp = self.max_hp
         self.did_hit = False  # 이번 공격 동안 이미 때렸는지 여부
 
+        # [NEW] 피격 효과 타이머
+        self.hit_timer = 0.0
+        self.knockback_timer = 0.0
+
         # --------- 공격 모션 강제 선택용 (0이면 랜덤) ----------
         self.next_attack_type = 0  # 0: 랜덤, 1: Attack1, 2: Attack2
 
@@ -417,14 +426,11 @@ class EvilKnight:
 
         body_w = full_w * self.body_w_ratio
 
-
         sword_w = body_w * 2.0
         # 세로: 발 근처의 낮은 영역만 (너무 높게 잡지 않기)
         sword_h = full_h * 0.3
 
-
         cx = self.x + self.face_dir * (body_w * 0.5 + sword_w * 0.5)
-
 
         cy = self.y - full_h * 0.35
 
@@ -435,6 +441,22 @@ class EvilKnight:
         right  = cx + half_w
         top    = cy + half_h
         return left, bottom, right, top
+
+    # [NEW] 피격 효과 시작
+    def start_hit_effect(self):
+        self.hit_timer = HIT_EFFECT_DURATION
+        self.knockback_timer = HIT_KNOCKBACK_DURATION
+
+    # [NEW] 데미지 처리 + 무적 시간 처리
+    def apply_damage(self, amount):
+        # 이미 죽었거나 무적이면 무시
+        if self.hp <= 0:
+            return
+        if self.hit_timer > 0.0:
+            return
+
+        self.hp = max(0, self.hp - amount)
+        self.start_hit_effect()
 
     def run_demo(self):
         # 한 번 데모 끝나면 더 이상 수행 X
@@ -508,15 +530,24 @@ class EvilKnight:
                 self.dir = 0
                 self.state_machine.change_state(self.IDLE)
 
-
-
-
-
     def handle_event(self, e):
         # 아직 플레이어 입력 없음(나중에 AI에서 직접 state 변경 예정)
         pass
 
     def update(self):
+        dt = game_framework.frame_time
+        if dt > MAX_DT:
+            dt = MAX_DT
+
+        # [NEW] 피격 타이머/넉백 처리
+        if self.hit_timer > 0.0:
+            self.hit_timer = max(0.0, self.hit_timer - dt)
+        if self.knockback_timer > 0.0:
+            self.knockback_timer = max(0.0, self.knockback_timer - dt)
+            # 바라보는 방향의 반대(-face_dir)로 밀려남
+            self.x += -self.face_dir * HIT_KNOCKBACK_SPEED_PPS * dt
+            self.x = max(self.left_bound, min(self.x, self.right_bound))
+
         if self.hp <= 0:
             if self.state_machine.cur_state is not self.DIE:
                 self.dir = 0
@@ -529,7 +560,17 @@ class EvilKnight:
         self.state_machine.update()
 
     def draw(self):
-        self.state_machine.draw()
+        # [NEW] 깜빡임: hit_timer 동안 일정 주기로 스프라이트 숨기기
+        visible = True
+        if self.hit_timer > 0.0:
+            # 경과 시간 기준으로 깜빡 (대략 10Hz)
+            elapsed = HIT_EFFECT_DURATION - self.hit_timer
+            if int(elapsed * 20) % 2 == 0:
+                visible = False
+
+        if visible:
+            self.state_machine.draw()
+
         left, bottom, right, top = self.get_bb()
         draw_rectangle(left, bottom, right, top)
 
