@@ -71,9 +71,21 @@ def resolve_attack(attacker, defender):
     if getattr(attacker, 'did_hit', False):
         return
 
-    # HP 감소 + 피격 연출 (무적 포함)
+    # --- 넉백 방향 결정 ---
+    # 공격자가 왼쪽에 있으면 피격자를 오른쪽(+1)으로,
+    # 공격자가 오른쪽에 있으면 피격자를 왼쪽(-1)으로 민다.
+    if hasattr(attacker, 'x') and hasattr(defender, 'x'):
+        if attacker.x < defender.x:
+            knock_dir = 1    # 오른쪽으로 넉백
+        else:
+            knock_dir = -1   # 왼쪽으로 넉백
+    else:
+        # 혹시 모를 예외용 – 위치가 없으면 그냥 바라보는 반대
+        knock_dir = -getattr(defender, 'face_dir', 1)
+
+    # HP 감소 + 피격 연출
     if hasattr(defender, 'apply_damage'):
-        defender.apply_damage(10)
+        defender.apply_damage(10, knock_dir)
     else:
         defender.hp = max(0, defender.hp - 10)
 
@@ -134,7 +146,7 @@ grass = Grass()
 boy = Boy()
 evil = EvilKnight()
 
-# [NEW] 처음 시작할 때도 땅 위에 정확히 세우기
+# 처음 시작할 때도 땅 위에 정확히 세우기
 place_on_ground(boy, grass)
 place_on_ground(evil, grass)
 

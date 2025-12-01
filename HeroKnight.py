@@ -41,7 +41,7 @@ JUMP_SPEED_PPS = 560.0
 # dt 스파이크 상한 (초) — 30fps보다 긴 프레임은 이 값까지만 처리
 MAX_DT = 1.0 / 30.0
 
-# [NEW] 피격 관련 상수
+# 피격 관련 상수
 HIT_EFFECT_DURATION = 2.0        # 2초 동안 깜빡
 HIT_KNOCKBACK_DURATION = 0.2     # 0.2초 동안 넉백
 HIT_KNOCKBACK_SPEED_PPS = 250.0  # 넉백 속도
@@ -55,12 +55,12 @@ def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1]
 
 def space_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_SPACE
 def up_down(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_UP
-def a_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_a
+def a_down(e):      return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_a
 def s_down(e):      return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_s
 def jump_done(e):   return e[0] == 'JUMP_DONE'
 def fall_done(e):   return e[0] == 'FALL_DONE'
-def landed_run(e):   return e[0] == 'LANDED_RUN'     # 착지 + 이동중
-def landed_idle(e):  return e[0] == 'LANDED_IDLE'    # 착지 + 정지
+def landed_run(e):  return e[0] == 'LANDED_RUN'     # 착지 + 이동중
+def landed_idle(e): return e[0] == 'LANDED_IDLE'    # 착지 + 정지
 
 
 class Idle:
@@ -236,10 +236,8 @@ class Roll:
         self.boy.frame = (self.boy.frame
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
 
-
         self.boy.x += self.move_dir * ROLL_SPEED_PPS * dt
         self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
-
 
         if self.elapsed >= ROLL_DURATION:
             next_state = self.boy.RUN if self.boy.dir != 0 else self.boy.IDLE
@@ -403,9 +401,10 @@ class Boy:
         self.hp = self.max_hp
         self.did_hit = False
 
-        # [NEW] 피격 효과 타이머
+        # 피격 효과 타이머 + 넉백 방향
         self.hit_timer = 0.0
         self.knockback_timer = 0.0
+        self.knockback_dir = 0   # -1 / 0 / 1
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)
@@ -516,13 +515,19 @@ class Boy:
         top = cy + half_h
         return left, bottom, right, top
 
-    # [NEW] 피격 효과 시작
-    def start_hit_effect(self):
+    # 피격 효과 시작
+    def start_hit_effect(self, knockback_dir=None):
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
 
-    # [NEW] 데미지 처리 + 무적 시간
-    def apply_damage(self, amount):
+        # 넉백 방향이 명시되면 그걸 쓰고, 아니면 바라보는 방향의 반대
+        if knockback_dir is not None:
+            self.knockback_dir = knockback_dir
+        else:
+            self.knockback_dir = -self.face_dir
+
+    # 데미지 처리 + 무적 시간
+    def apply_damage(self, amount, knockback_dir=None):
         # 이미 죽었거나 무적이면 무시
         if self.hp <= 0:
             return
@@ -530,7 +535,7 @@ class Boy:
             return
 
         self.hp = max(0, self.hp - amount)
-        self.start_hit_effect()
+        self.start_hit_effect(knockback_dir)
 
     def handle_event(self, e):
 
@@ -584,10 +589,10 @@ class Boy:
 
         if e.type == SDL_KEYDOWN:
             if e.key == SDLK_RIGHT:
-                self.dir = 1;
+                self.dir = 1
                 self.face_dir = 1
             elif e.key == SDLK_LEFT:
-                self.dir = -1;
+                self.dir = -1
                 self.face_dir = -1
             elif e.key == SDLK_SPACE:
                 if (self.state_machine.cur_state not in (self.JUMP, self.FALL, self.ROLL)
@@ -603,13 +608,13 @@ class Boy:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # [NEW] 피격 타이머/넉백 처리
+        # 피격 타이머/넉백 처리
         if self.hit_timer > 0.0:
             self.hit_timer = max(0.0, self.hit_timer - dt)
         if self.knockback_timer > 0.0:
             self.knockback_timer = max(0.0, self.knockback_timer - dt)
-            # 바라보는 방향의 반대(-face_dir)로 밀려남
-            self.x += -self.face_dir * HIT_KNOCKBACK_SPEED_PPS * dt
+            # knockback_dir 방향으로 밀려남
+            self.x += self.knockback_dir * HIT_KNOCKBACK_SPEED_PPS * dt
             self.x = max(self.left_bound, min(self.x, self.right_bound))
 
         if self.hp <= 0:
@@ -627,7 +632,7 @@ class Boy:
         self.state_machine.update()
 
     def draw(self):
-        # [NEW] 깜빡임: hit_timer 동안 일정 주기로 스프라이트 숨기기
+        # 깜빡임: hit_timer 동안 일정 주기로 스프라이트 숨기기
         visible = True
         if self.hit_timer > 0.0:
             elapsed = HIT_EFFECT_DURATION - self.hit_timer
