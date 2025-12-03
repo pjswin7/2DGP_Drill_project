@@ -2,42 +2,40 @@ from pico2d import *
 import os
 import game_framework
 
-
-# self.vy(수직속도), self.g(중력), self.jump_speed(초기속도), self.ground_y(바닥 높이)
-# self.air_vx(공중에서 유지할 수평 속도),
-
-
 from state_machine import StateMachine
 
 BASE = os.path.dirname(__file__)
+
+
 def p(*names):
     return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
+
+
+def cave_path(*names):
+    return os.path.join(BASE, 'cave', *names)
 
 
 PIXEL_PER_METER = (10.0 / 0.3)
 
 RUN_SPEED_KMPH = 20.0
-RUN_SPEED_MPM  = (RUN_SPEED_KMPH * 1000.0 / 60.0)
-RUN_SPEED_MPS  = (RUN_SPEED_MPM / 60.0)
-RUN_SPEED_PPS  = (RUN_SPEED_MPS * PIXEL_PER_METER)
+RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0 / 60.0)
+RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
 
 ATTACK_DURATION = 0.45
 
-
-TIME_PER_ACTION   = 0.5
-ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
+TIME_PER_ACTION = 0.5
+ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 FRAMES_PER_ACTION = 8
 
-ROLL_SPEED_PPS   = RUN_SPEED_PPS * 2.0
-ROLL_DURATION    = 0.45
-ROLL_COOLTIME    = 10.0                  #  구르기만 10초 쿨타임
-
-
+ROLL_SPEED_PPS = RUN_SPEED_PPS * 2.0
+ROLL_DURATION = 0.45
+ROLL_COOLTIME = 10.0  # 구르기만 10초 쿨타임
 
 GRAVITY_PPS2 = 1200.0
 JUMP_SPEED_PPS = 560.0
 
-# dt 스파이크 상한 (초) — 30fps보다 긴 프레임은 이 값까지만 처리
+# dt 스파이크 상한 (초)
 MAX_DT = 1.0 / 30.0
 
 # 피격 관련 상수
@@ -48,12 +46,15 @@ HIT_KNOCKBACK_SPEED_PPS = 250.0  # 넉백 속도
 # 방어 성공 시 넉백 속도(조금만 밀리도록)
 BLOCK_KNOCKBACK_SPEED_PPS = 100.0
 
+# 각성 관련 상수
+SUPER_THRESHOLD_HP = 50          # HP 50 미만에서 각성
+SUPER_SPEED_SCALE = 1.3          # 이동 속도 배율
 
 
 def right_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_RIGHT
-def right_up(e):    return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1].key == SDLK_RIGHT
+def right_up(e):    return e[0] == 'INPUT' and e[1].type == SDL_KEYUP and e[1].key == SDLK_RIGHT
 def left_down(e):   return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_LEFT
-def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP   and e[1].key == SDLK_LEFT
+def left_up(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYUP and e[1].key == SDLK_LEFT
 
 def space_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_SPACE
 def up_down(e):     return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_UP
@@ -61,8 +62,8 @@ def a_down(e):      return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1]
 def s_down(e):      return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_s
 def jump_done(e):   return e[0] == 'JUMP_DONE'
 def fall_done(e):   return e[0] == 'FALL_DONE'
-def landed_run(e):  return e[0] == 'LANDED_RUN'     # 착지 + 이동중
-def landed_idle(e): return e[0] == 'LANDED_IDLE'    # 착지 + 정지
+def landed_run(e):  return e[0] == 'LANDED_RUN'
+def landed_idle(e): return e[0] == 'LANDED_IDLE'
 
 
 class Idle:
@@ -90,7 +91,6 @@ class Idle:
 
     def draw(self):
         self.boy.draw_current_frame()
-
 
 
 class Run:
@@ -122,15 +122,12 @@ class Run:
         self.boy.frame = (self.boy.frame
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
 
-        self.boy.x += self.boy.dir * RUN_SPEED_PPS * dt
-
+        self.boy.x += self.boy.dir * RUN_SPEED_PPS * self.boy.speed_scale * dt
         self.boy.x = max(self.boy.left_bound,
                          min(self.boy.x, self.boy.right_bound))
 
     def draw(self):
         self.boy.draw_current_frame()
-
-
 
 
 class Jump:
@@ -156,8 +153,7 @@ class Jump:
         self.boy.frame = (self.boy.frame
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
 
-        self.boy.x += self.boy.dir * RUN_SPEED_PPS * dt
-
+        self.boy.x += self.boy.dir * RUN_SPEED_PPS * self.boy.speed_scale * dt
         self.boy.x = max(self.boy.left_bound,
                          min(self.boy.x, self.boy.right_bound))
 
@@ -169,8 +165,6 @@ class Jump:
 
     def draw(self):
         self.boy.draw_current_frame()
-
-
 
 
 class Fall:
@@ -193,13 +187,12 @@ class Fall:
         self.boy.frame = (self.boy.frame
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
 
-        self.boy.x += self.boy.dir * RUN_SPEED_PPS * dt
-
+        self.boy.x += self.boy.dir * RUN_SPEED_PPS * self.boy.speed_scale * dt
         self.boy.x = max(self.boy.left_bound,
                          min(self.boy.x, self.boy.right_bound))
 
         self.boy.vy -= GRAVITY_PPS2 * dt
-        self.boy.y  += self.boy.vy * dt
+        self.boy.y += self.boy.vy * dt
 
         ground_y = getattr(self.boy, 'ground_y', 70)
         if self.boy.y <= ground_y:
@@ -232,13 +225,14 @@ class Roll:
 
     def do(self):
         dt = game_framework.frame_time
-        if dt > MAX_DT: dt = MAX_DT
+        if dt > MAX_DT:
+            dt = MAX_DT
 
         self.elapsed += dt
         self.boy.frame = (self.boy.frame
                           + self.boy.max_frames * ACTION_PER_TIME * dt) % self.boy.max_frames
 
-        self.boy.x += self.move_dir * ROLL_SPEED_PPS * dt
+        self.boy.x += self.move_dir * ROLL_SPEED_PPS * self.boy.speed_scale * dt
         self.boy.x = max(self.boy.left_bound, min(self.boy.x, self.boy.right_bound))
 
         if self.elapsed >= ROLL_DURATION:
@@ -249,23 +243,19 @@ class Roll:
         self.boy.draw_current_frame()
 
 
-
 class Attack:
     def __init__(self, boy):
         self.boy = boy
 
     def enter(self, e):
         import random
-        # 어떤 공격을 쓸지 결정(1회)
         self.pick = random.choice([1, 2])
         self.boy.frame = 0
         self.boy.prev_time = get_time()
 
-        # 공격 중에는 수평 이동 정지
         self.saved_dir = self.boy.dir
         self.boy.dir = 0
 
-        # 이번 공격 동안은 아직 한 번도 맞추지 않은 상태
         self.boy.did_hit = False
 
         self.boy.anim = self.boy.attack1 if self.pick == 1 else self.boy.attack2
@@ -273,17 +263,14 @@ class Attack:
         self.fps = self.boy.max_frames / ATTACK_DURATION
 
     def exit(self, e):
-        # 이동키가 눌려 있었다면 원래 방향 복구
         self.boy.dir = self.saved_dir
 
     def do(self):
-
         now = get_time()
         dt = min(now - self.boy.prev_time, MAX_DT)
         self.boy.prev_time = now
         self.boy.frame += self.fps * dt
         if self.boy.frame >= self.boy.max_frames:
-
             if self.boy.dir == 0:
                 self.boy.state_machine.change_state(self.boy.IDLE)
             else:
@@ -291,8 +278,6 @@ class Attack:
 
     def draw(self):
         self.boy.draw_current_frame()
-
-
 
 
 class Block:
@@ -346,17 +331,12 @@ class Die:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 한 번만 재생하고 마지막 프레임에 고정
         self.boy.frame += self.boy.max_frames * ACTION_PER_TIME * dt
         if self.boy.frame >= self.boy.max_frames:
             self.boy.frame = self.boy.max_frames - 1
 
     def draw(self):
         self.boy.draw_current_frame()
-
-
-
-
 
 
 class Boy:
@@ -403,17 +383,31 @@ class Boy:
         self.hp = self.max_hp
         self.did_hit = False
 
-        # 피격 효과 타이머 + 넉백 방향
+        # 피격 효과 + 넉백
         self.hit_timer = 0.0
         self.knockback_timer = 0.0
-        self.knockback_dir = 0   # -1 / 0 / 1
+        self.knockback_dir = 0
         self.knockback_speed = HIT_KNOCKBACK_SPEED_PPS
 
-        # 방어 게이지 (최대 3칸)
+        # 방어 게이지
         self.guard_max = 3
         self.guard_current = self.guard_max
-        self.guard_recharge_delay = 3.0       # 3초마다 한 칸 회복
+        self.guard_recharge_delay = 3.0  # 3초마다 1칸 회복
         self.guard_recharge_timer = 0.0
+
+        # 각성 상태
+        self.awakened = False
+        self.speed_scale = 1.0
+
+        # 오라(파란색) - cave/aura1.png 에서 로드
+        self.aura_sheet = load_image(cave_path('aura1.png'))
+        self.aura_cols = 4
+        self.aura_rows = 1
+        self.aura_frame_w = self.aura_sheet.w // self.aura_cols
+        self.aura_frame_h = self.aura_sheet.h // self.aura_rows
+        self.aura_frame = 0.0
+        self.aura_max_frames = self.aura_cols
+        self.aura_scale = 2.4
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)
@@ -441,9 +435,7 @@ class Boy:
                 left_down: self.RUN,
                 up_down: self.JUMP,
             },
-            self.JUMP: {
-
-            },
+            self.JUMP: {},
             self.FALL: {
                 right_down: self.FALL,
                 left_down: self.FALL,
@@ -458,7 +450,6 @@ class Boy:
     def draw_current_frame(self):
         fi = int(self.frame) % self.max_frames
         img = self.anim[fi]
-        # 이미지 원본 크기에 scale 적용
         try:
             w, h = img.w, img.h
             tw, th = int(w * self.scale), int(h * self.scale)
@@ -524,23 +515,18 @@ class Boy:
         top = cy + half_h
         return left, bottom, right, top
 
-    # 피격 효과 시작
+    # 일반 피격
     def start_hit_effect(self, knockback_dir=None):
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
-
-        # 일반 피격일 때는 기본 넉백 속도 사용
         self.knockback_speed = HIT_KNOCKBACK_SPEED_PPS
 
-        # 넉백 방향이 명시되면 그걸 쓰고, 아니면 바라보는 방향의 반대
         if knockback_dir is not None:
             self.knockback_dir = knockback_dir
         else:
             self.knockback_dir = -self.face_dir
 
-    # 데미지 처리 + 무적 시간
     def apply_damage(self, amount, knockback_dir=None):
-        # 이미 죽었거나 무적이면 무시
         if self.hp <= 0:
             return
         if self.hit_timer > 0.0:
@@ -549,7 +535,7 @@ class Boy:
         self.hp = max(0, self.hp - amount)
         self.start_hit_effect(knockback_dir)
 
-    # 방어 성공 시 넉백만 적용(깜빡임/무적 없음)
+    # 방어 성공 시(깜빡임 없이 약한 넉백)
     def start_block_knockback(self, knockback_dir):
         if knockback_dir is None:
             knockback_dir = -self.face_dir
@@ -557,18 +543,26 @@ class Boy:
         self.knockback_timer = HIT_KNOCKBACK_DURATION
         self.knockback_speed = BLOCK_KNOCKBACK_SPEED_PPS
 
-    # 방어 게이지 1칸 소모 + 넉백 적용
-    def consume_guard(self, knockback_dir):
+    def consume_guard(self, knockback_dir, use_all=False):
         if self.guard_current <= 0:
             return False
-        self.guard_current -= 1
-        # 새로 막은 순간부터 다시 3초 카운트
+
+        if use_all:
+            self.guard_current = 0
+        else:
+            self.guard_current -= 1
+
         self.guard_recharge_timer = 0.0
         self.start_block_knockback(knockback_dir)
         return True
 
-    def handle_event(self, e):
+    # 각성 발동
+    def super_power(self):
+        if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
+            self.awakened = True
+            self.speed_scale = SUPER_SPEED_SCALE
 
+    def handle_event(self, e):
         if self.hp <= 0:
             return
 
@@ -626,24 +620,25 @@ class Boy:
                 self.face_dir = -1
             elif e.key == SDLK_SPACE:
                 if (self.state_machine.cur_state not in (self.JUMP, self.FALL, self.ROLL)
-                        and self.roll_cool <= 0.0):  # 구르기만 쿨
+                        and self.roll_cool <= 0.0):
                     self.state_machine.change_state(self.ROLL)
                     self.roll_cool = ROLL_COOLTIME
         if e.type == SDL_KEYUP:
-            if e.key == SDLK_RIGHT and self.dir == 1: self.dir = 0
-            if e.key == SDLK_LEFT and self.dir == -1: self.dir = 0
+            if e.key == SDLK_RIGHT and self.dir == 1:
+                self.dir = 0
+            if e.key == SDLK_LEFT and self.dir == -1:
+                self.dir = 0
 
     def update(self):
         dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 피격 타이머/넉백 처리
+        # 피격/넉백 처리
         if self.hit_timer > 0.0:
             self.hit_timer = max(0.0, self.hit_timer - dt)
         if self.knockback_timer > 0.0:
             self.knockback_timer = max(0.0, self.knockback_timer - dt)
-            # knockback_dir 방향으로 밀려남
             self.x += self.knockback_dir * self.knockback_speed * dt
             self.x = max(self.left_bound, min(self.x, self.right_bound))
 
@@ -657,25 +652,40 @@ class Boy:
             self.state_machine.update()
             return
 
-        # 방어 게이지 자동 회복 (3초마다 한 칸씩)
+        # 각성 상태 체크
+        self.super_power()
+
+        # 방어 게이지 회복
         if self.guard_current < self.guard_max:
             self.guard_recharge_timer += dt
             if self.guard_recharge_timer >= self.guard_recharge_delay:
                 self.guard_current += 1
                 if self.guard_current > self.guard_max:
                     self.guard_current = self.guard_max
-                # 한 칸 채울 때마다 다시 카운트
                 self.guard_recharge_timer = 0.0
         else:
-            # 풀 게이지일 땐 타이머 유지할 필요 없음
             self.guard_recharge_timer = 0.0
 
         if self.roll_cool > 0.0:
             self.roll_cool = max(0.0, self.roll_cool - game_framework.frame_time)
+
+        # 각성 오라 애니메이션
+        if self.awakened:
+            self.aura_frame = (self.aura_frame
+                               + self.aura_max_frames * ACTION_PER_TIME * dt) % self.aura_max_frames
+
         self.state_machine.update()
 
+    def draw_aura(self):
+        fi = int(self.aura_frame) % self.aura_max_frames
+        sx = fi * self.aura_frame_w
+        sy = 0
+        dw = int(self.aura_frame_w * self.aura_scale)
+        dh = int(self.aura_frame_h * self.aura_scale)
+        self.aura_sheet.clip_draw(sx, sy, self.aura_frame_w, self.aura_frame_h,
+                                  self.x, self.y, dw, dh)
+
     def draw(self):
-        # 깜빡임: hit_timer 동안 일정 주기로 스프라이트 숨기기
         visible = True
         if self.hit_timer > 0.0:
             elapsed = HIT_EFFECT_DURATION - self.hit_timer
@@ -683,6 +693,8 @@ class Boy:
                 visible = False
 
         if visible:
+            if self.awakened:
+                self.draw_aura()
             self.state_machine.draw()
 
         left, bottom, right, top = self.get_bb()

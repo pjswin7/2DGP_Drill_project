@@ -12,11 +12,9 @@ def resolve_ground(obj, ground):
     ol, ob, or_, ot = obj.get_bb()
     gl, gb, gr, gt = ground.get_bb()
 
-    # 수평으로 아예 안 겹치면 무시
     if or_ < gl or gr < ol:
         return
 
-    # 캐릭터가 땅 안으로 파고들었을 때만 위로 밀어 올림
     if ob < gt:
         dy = gt - ob
         obj.y += dy
@@ -37,13 +35,11 @@ def resolve_body_block(a, b):
     al, ab, ar, at = a.get_bb()
     bl, bb, br, bt = b.get_bb()
 
-    # 둘이 안 겹치면 아무것도 하지 않음
     if ar <= bl or br <= al:
         return
     if at <= bb or bt <= ab:
         return
 
-    # a가 b의 왼쪽에 있으면 왼쪽으로, 아니면 오른쪽으로 밀어냄
     if a.x < b.x:
         shift = bl - ar
     else:
@@ -58,7 +54,6 @@ def rects_intersect(a, b):
 
 
 def resolve_attack(attacker, defender):
-    # 공격 히트박스가 없으면 패스
     atk_bb = attacker.get_attack_bb()
     if atk_bb is None:
         return
@@ -67,47 +62,47 @@ def resolve_attack(attacker, defender):
     if not rects_intersect(atk_bb, def_bb):
         return
 
-    # 이번 공격에서 이미 한 번 때렸으면 더 이상 데미지 없음
     if getattr(attacker, 'did_hit', False):
         return
 
-    # --- 넉백 방향 결정 ---
+    # 넉백 방향
     if hasattr(attacker, 'x') and hasattr(defender, 'x'):
         if attacker.x < defender.x:
-            knock_dir = 1    # 오른쪽으로 넉백
+            knock_dir = 1
         else:
-            knock_dir = -1   # 왼쪽으로 넉백
+            knock_dir = -1
     else:
-        # 혹시 모를 예외용 – 위치가 없으면 그냥 바라보는 반대
         knock_dir = -getattr(defender, 'face_dir', 1)
 
-    # --- HeroKnight가 막고 있는 경우: 정면 + 게이지 남아 있으면 데미지 대신 방어 ---
+    # 공격력: 각성 여부에 따라 10 or 15
+    is_awakened_attacker = getattr(attacker, 'awakened', False)
+    damage = 15 if is_awakened_attacker else 10
+
+    # --- Hero가 Block 상태인 경우: 정면 + 가드 게이지 ---
     if isinstance(defender, Boy) and isinstance(defender.state_machine.cur_state, Block):
         front = False
         if hasattr(attacker, 'x'):
-            # Hero가 오른쪽을 보고 있으면, 오른쪽에서 오는 공격만 정면
             if defender.face_dir == 1 and attacker.x >= defender.x:
                 front = True
-            # Hero가 왼쪽을 보고 있으면, 왼쪽에서 오는 공격만 정면
             elif defender.face_dir == -1 and attacker.x <= defender.x:
                 front = True
 
         if front and getattr(defender, 'guard_current', 0) > 0:
-            # 방어 게이지 1칸 소모 + 깜빡임 없이 소량 넉백
-            if defender.consume_guard(knock_dir):
+            # 각성 공격이면 가드 3칸 한 번에 소모
+            use_all = is_awakened_attacker
+            if defender.consume_guard(knock_dir, use_all=use_all):
                 attacker.did_hit = True
                 print(f'Guard! {defender.__class__.__name__} guard = {defender.guard_current}')
                 return
-        # 정면이 아니거나 게이지가 0이면 그냥 맞는 처리로 내려감
+        # 정면이 아니거나 게이지 0이면 그냥 맞음
 
-    # HP 감소 + 피격 연출
+    # 실제 데미지 적용
     if hasattr(defender, 'apply_damage'):
-        defender.apply_damage(10, knock_dir)
+        defender.apply_damage(damage, knock_dir)
     else:
-        defender.hp = max(0, defender.hp - 10)
+        defender.hp = max(0, defender.hp - damage)
 
     attacker.did_hit = True
-
     print(f'Hit! {defender.__class__.__name__} HP = {defender.hp}')
 
 
@@ -119,7 +114,7 @@ def draw_hp_bars(boy, evil):
     bar_h = 10
     margin = 20
 
-    # ----- Hero HP (왼쪽 상단, 왼쪽→오른쪽으로 줄어듦) -----
+    # Hero HP
     x1 = margin
     y2 = ch - margin
     x2 = x1 + bar_w
@@ -129,25 +124,23 @@ def draw_hp_bars(boy, evil):
         cur_w = bar_w * boy.hp / boy.max_hp
         draw_rectangle(x1, y1, x1 + cur_w, y2)
 
-    # ----- Hero Guard (HP 바로 아래 3칸 게이지) -----
+    # Hero Guard 게이지 (HP 아래)
     if hasattr(boy, 'guard_max') and hasattr(boy, 'guard_current'):
         segments = boy.guard_max
         if segments > 0:
             guard_y2 = y1 - 5
             guard_y1 = guard_y2 - bar_h
             seg_w = bar_w / segments
-            gap = 2  # 칸 사이 약간의 간격
+            gap = 2
 
             for i in range(segments):
                 gx1 = margin + i * seg_w
                 gx2 = gx1 + seg_w - gap
-                # 슬롯 테두리
                 draw_rectangle(gx1, guard_y1, gx2, guard_y2)
-                # 남아있는 칸만 안쪽에 한 번 더 그려서 구분
                 if i < boy.guard_current:
                     draw_rectangle(gx1 + 1, guard_y1 + 1, gx2 - 1, guard_y2 - 1)
 
-    # ----- Evil HP (오른쪽 상단, 오른쪽→왼쪽으로 줄어듦) -----
+    # Evil HP
     x2 = cw - margin
     x1 = x2 - bar_w
     y2 = ch - margin
@@ -158,10 +151,7 @@ def draw_hp_bars(boy, evil):
         draw_rectangle(x2 - cur_w, y1, x2, y2)
 
 
-# [NEW] 땅 히트박스에 맞게 캐릭터를 자동으로 올려놓는 함수
 def place_on_ground(obj, ground):
-    """obj의 발(bottom)이 ground의 top에 딱 닿도록 y를 조정하고,
-    obj.ground_y도 함께 갱신한다."""
     ol, ob, or_, ot = obj.get_bb()
     gl, gb, gr, gt = ground.get_bb()
 
@@ -181,7 +171,6 @@ grass = Grass()
 boy = Boy()
 evil = EvilKnight()
 
-# 처음 시작할 때도 땅 위에 정확히 세우기
 place_on_ground(boy, grass)
 place_on_ground(evil, grass)
 
@@ -205,16 +194,13 @@ while running:
             if portal is not None:
                 if rects_intersect(boy.get_bb(), portal.get_bb()):
                     if stage == 1:
-                        # -------- 스테이지 1 -> 2 (동굴) --------
                         stage = 2
                         background = Stage2Background()
                         grass = CaveGround()
 
                         portal = None
-
                         evil = EvilKnight()
 
-                        # x 위치만 정해주고, y는 땅 히트박스로 자동 정렬
                         boy.x = 120
                         place_on_ground(boy, grass)
                         place_on_ground(evil, grass)
@@ -224,13 +210,11 @@ while running:
                         boy.vy = 0.0
 
                     elif stage == 2:
-                        # -------- 스테이지 2 -> 3 (성+용암) --------
                         stage = 3
                         background = Stage3Background()
                         grass = CastleGround()
 
                         portal = None
-
                         evil = EvilKnight()
 
                         boy.x = 120
@@ -249,23 +233,21 @@ while running:
     boy.update()
     evil.update()
 
-    # Evil이 죽으면 포탈 생성
+    # Evil 사망 시 포탈 생성
     if evil.hp <= 0 and portal is None:
         portal_x = get_canvas_width() - 80
-        # 포탈도 땅 위에서 시작
         portal_y_top = grass.top
         portal = Portal(portal_x, portal_y_top)
 
     if portal is not None:
         portal.update()
 
-    # 여전히 안전용으로 충돌 보정은 둔다
     resolve_ground(boy, grass)
     resolve_ground(evil, grass)
     resolve_body_block(boy, evil)
 
-    resolve_attack(boy, evil)  # Hero가 Evil을 때리는 경우
-    resolve_attack(evil, boy)  # Evil이 Hero를 때리는 경우
+    resolve_attack(boy, evil)
+    resolve_attack(evil, boy)
 
     if stage == 2:
         background.handle_hazard_collision(boy, evil)

@@ -4,8 +4,14 @@ import game_framework
 from state_machine import StateMachine
 
 BASE = os.path.dirname(__file__)
+
+
 def p(*names):
     return os.path.join(BASE, '120x80_PNGSheets', *names)
+
+
+def cave_path(*names):
+    return os.path.join(BASE, 'cave', *names)
 
 
 FRAME_W = 120
@@ -14,17 +20,17 @@ FRAME_H = 80
 PIXEL_PER_METER = (10.0 / 0.3)
 
 RUN_SPEED_KMPH = 20.0
-RUN_SPEED_MPM  = (RUN_SPEED_KMPH * 1000.0 / 60.0)
-RUN_SPEED_MPS  = (RUN_SPEED_MPM / 60.0)
-RUN_SPEED_PPS  = (RUN_SPEED_MPS * PIXEL_PER_METER)
+RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0 / 60.0)
+RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
+RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
 
-ROLL_SPEED_PPS   = RUN_SPEED_PPS * 2.0
-ROLL_DURATION    = 0.45
+ROLL_SPEED_PPS = RUN_SPEED_PPS * 2.0
+ROLL_DURATION = 0.45
 
-ATTACK_DURATION  = 0.45   # 공격 1회 재생 시간
+ATTACK_DURATION = 0.45   # 공격 1회 재생 시간
 
-TIME_PER_ACTION   = 0.5
-ACTION_PER_TIME   = 1.0 / TIME_PER_ACTION
+TIME_PER_ACTION = 0.5
+ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 
 GRAVITY_PPS2 = 1200.0
 JUMP_SPEED_PPS = 560.0
@@ -32,9 +38,13 @@ JUMP_SPEED_PPS = 560.0
 MAX_DT = 1.0 / 30.0
 
 # 피격 관련 상수
-HIT_EFFECT_DURATION = 2.0        # 2초 동안 깜빡
-HIT_KNOCKBACK_DURATION = 0.2     # 0.2초 동안 넉백
-HIT_KNOCKBACK_SPEED_PPS = 250.0  # 넉백 속도
+HIT_EFFECT_DURATION = 2.0
+HIT_KNOCKBACK_DURATION = 0.2
+HIT_KNOCKBACK_SPEED_PPS = 250.0
+
+# 각성 관련 상수
+SUPER_THRESHOLD_HP = 50
+SUPER_SPEED_SCALE = 1.3
 
 
 class Idle:
@@ -85,7 +95,7 @@ class Run:
             + self.knight.max_frames * ACTION_PER_TIME * dt
         ) % self.knight.max_frames
 
-        self.knight.x += self.knight.dir * RUN_SPEED_PPS * dt
+        self.knight.x += self.knight.dir * RUN_SPEED_PPS * self.knight.speed_scale * dt
         self.knight.x = max(self.knight.left_bound,
                             min(self.knight.x, self.knight.right_bound))
 
@@ -120,7 +130,7 @@ class Roll:
             + self.knight.max_frames * ACTION_PER_TIME * dt
         ) % self.knight.max_frames
 
-        self.knight.x += self.move_dir * ROLL_SPEED_PPS * dt
+        self.knight.x += self.move_dir * ROLL_SPEED_PPS * self.knight.speed_scale * dt
         self.knight.x = max(self.knight.left_bound,
                             min(self.knight.x, self.knight.right_bound))
 
@@ -142,9 +152,8 @@ class Attack:
 
         if self.knight.next_attack_type in (1, 2):
             pick = self.knight.next_attack_type
-            self.knight.next_attack_type = 0  # 한 번 쓰고 나면 다시 랜덤 모드
+            self.knight.next_attack_type = 0
         else:
-            # 1번/2번 공격 중 하나를 랜덤 선택
             pick = random.choice([1, 2])
 
         if pick == 1:
@@ -158,15 +167,13 @@ class Attack:
         self.knight.prev_time = get_time()
 
         self.saved_dir = self.knight.dir
-        self.knight.dir = 0  # 공격 중에는 이동 정지
+        self.knight.dir = 0
 
-        # 이번 공격 동안은 아직 한 번도 맞추지 않은 상태
         self.knight.did_hit = False
 
         self.fps = self.knight.max_frames / ATTACK_DURATION
 
     def exit(self, e):
-        # 끝나면 원래 이동 방향 복구
         self.knight.dir = self.saved_dir
 
     def do(self):
@@ -181,7 +188,6 @@ class Attack:
         self.knight.frame += self.fps * dt
 
         if self.knight.frame >= self.knight.max_frames:
-            # 공격이 끝나면 서 있거나(Idle), 달리거나(Run) 중 하나로 복귀
             if self.knight.dir == 0:
                 self.knight.state_machine.change_state(self.knight.IDLE)
             else:
@@ -215,7 +221,7 @@ class Jump:
         ) % self.knight.max_frames
 
         self.knight.vy -= GRAVITY_PPS2 * dt
-        self.knight.y  += self.knight.vy * dt
+        self.knight.y += self.knight.vy * dt
 
         if self.knight.vy <= 0:
             self.knight.state_machine.change_state(self.knight.FALL)
@@ -247,7 +253,7 @@ class Fall:
         ) % self.knight.max_frames
 
         self.knight.vy -= GRAVITY_PPS2 * dt
-        self.knight.y  += self.knight.vy * dt
+        self.knight.y += self.knight.vy * dt
 
         if self.knight.y <= self.knight.ground_y:
             self.knight.y = self.knight.ground_y
@@ -259,7 +265,6 @@ class Fall:
 
     def draw(self):
         self.knight.draw_current_frame()
-
 
 
 class Die:
@@ -283,7 +288,6 @@ class Die:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 한 번만 재생하고 마지막 프레임에 고정
         self.knight.frame += self.knight.max_frames * ACTION_PER_TIME * dt
         if self.knight.frame >= self.knight.max_frames:
             self.knight.frame = self.knight.max_frames - 1
@@ -292,30 +296,25 @@ class Die:
         self.knight.draw_current_frame()
 
 
-
-
 class EvilKnight:
     def __init__(self):
-        # 각 모션별 스프라이트 시트 로드
-        self.idle_sheet   = load_image(p('_Idle.png'))
-        self.run_sheet    = load_image(p('_Run.png'))
-        self.roll_sheet   = load_image(p('_Roll.png'))
-        self.jump_sheet   = load_image(p('_Jump.png'))
-        self.fall_sheet   = load_image(p('_JumpFallInbetween.png'))
+        self.idle_sheet = load_image(p('_Idle.png'))
+        self.run_sheet = load_image(p('_Run.png'))
+        self.roll_sheet = load_image(p('_Roll.png'))
+        self.jump_sheet = load_image(p('_Jump.png'))
+        self.fall_sheet = load_image(p('_JumpFallInbetween.png'))
         self.attack1_sheet = load_image(p('_Attack.png'))
         self.attack2_sheet = load_image(p('_Attack2.png'))
         self.dead_sheet = load_image(p('_Death.png'))
 
-        # 모든 시트는 120x80 기준의 프레임으로 잘려 있음
         self.frame_w = FRAME_W
         self.frame_h = FRAME_H
 
-        # 각 모션별 프레임 개수(가로 길이에서 계산)
-        self.idle_frames    = self.idle_sheet.w    // self.frame_w
-        self.run_frames     = self.run_sheet.w     // self.frame_w
-        self.roll_frames    = self.roll_sheet.w    // self.frame_w
-        self.jump_frames    = self.jump_sheet.w    // self.frame_w
-        self.fall_frames    = self.fall_sheet.w    // self.frame_w
+        self.idle_frames = self.idle_sheet.w // self.frame_w
+        self.run_frames = self.run_sheet.w // self.frame_w
+        self.roll_frames = self.roll_sheet.w // self.frame_w
+        self.jump_frames = self.jump_sheet.w // self.frame_w
+        self.fall_frames = self.fall_sheet.w // self.frame_w
         self.attack1_frames = self.attack1_sheet.w // self.frame_w
         self.attack2_frames = self.attack2_sheet.w // self.frame_w
         self.dead_frames = self.dead_sheet.w // self.frame_w
@@ -340,38 +339,49 @@ class EvilKnight:
 
         self.max_hp = 100
         self.hp = self.max_hp
-        self.did_hit = False  # 이번 공격 동안 이미 때렸는지 여부
+        self.did_hit = False
 
-        # 피격 효과 타이머 + 넉백 방향
+        # 피격 효과
         self.hit_timer = 0.0
         self.knockback_timer = 0.0
-        self.knockback_dir = 0   # -1 / 0 / 1
+        self.knockback_dir = 0
 
-        # --------- 공격 모션 강제 선택용 (0이면 랜덤) ----------
-        self.next_attack_type = 0  # 0: 랜덤, 1: Attack1, 2: Attack2
+        # 각성 상태
+        self.awakened = False
+        self.speed_scale = 1.0
 
-        # --------- 시작 시 자동 데모용 상태 ----------
+        # 붉은 오라 - cave/aura2.png 에서 로드
+        self.aura_sheet = load_image(cave_path('aura2.png'))
+        self.aura_cols = 4
+        self.aura_rows = 1
+        self.aura_frame_w = self.aura_sheet.w // self.aura_cols
+        self.aura_frame_h = self.aura_sheet.h // self.aura_rows
+        self.aura_frame = 0.0
+        self.aura_max_frames = self.aura_cols
+        self.aura_scale = 2.4
+
+        self.next_attack_type = 0
+
         self.demo_started = False
         self.demo_phase = 0
         self.demo_t0 = get_time()
         self.demo_done = False
 
-        self.IDLE   = Idle(self)
-        self.RUN    = Run(self)
-        self.ROLL   = Roll(self)
+        self.IDLE = Idle(self)
+        self.RUN = Run(self)
+        self.ROLL = Roll(self)
         self.ATTACK = Attack(self)
-        self.JUMP   = Jump(self)
-        self.FALL   = Fall(self)
+        self.JUMP = Jump(self)
+        self.FALL = Fall(self)
         self.DIE = Die(self)
 
-        # 아직 AI/입력 없음 → 규칙 비워둠
         self.rules = {
-            self.IDLE:   {},
-            self.RUN:    {},
-            self.ROLL:   {},
+            self.IDLE: {},
+            self.RUN: {},
+            self.ROLL: {},
             self.ATTACK: {},
-            self.JUMP:   {},
-            self.FALL:   {},
+            self.JUMP: {},
+            self.FALL: {},
             self.DIE: {},
         }
         self.state_machine = StateMachine(self.IDLE, self.rules)
@@ -400,18 +410,15 @@ class EvilKnight:
         full_w = self.frame_w * self.scale
         full_h = self.frame_h * self.scale
 
-        # 비율에 따라 몸통 크기 결정
         w = full_w * self.body_w_ratio
         h = full_h * self.body_h_ratio
 
         half_w = w / 2
         half_h = h / 2
 
-        # 세로 방향은 살짝 아래쪽으로 내려서(발 쪽 기준)
         offset = full_h * self.bb_y_offset_ratio
         cy = self.y - offset
 
-        # 가로 방향은 HeroKnight 처럼 self.x 기준으로 완전 좌우 대칭
         left = self.x - half_w
         bottom = cy - half_h
         right = self.x + half_w
@@ -419,6 +426,7 @@ class EvilKnight:
         return left, bottom, right, top
 
     def get_attack_bb(self):
+        from EvilKnight import Attack
         if not isinstance(self.state_machine.cur_state, Attack):
             return None
 
@@ -428,35 +436,29 @@ class EvilKnight:
         body_w = full_w * self.body_w_ratio
 
         sword_w = body_w * 2.0
-        # 세로: 발 근처의 낮은 영역만 (너무 높게 잡지 않기)
         sword_h = full_h * 0.3
 
         cx = self.x + self.face_dir * (body_w * 0.5 + sword_w * 0.5)
-
         cy = self.y - full_h * 0.35
 
         half_w = sword_w / 2
         half_h = sword_h / 2
-        left   = cx - half_w
+        left = cx - half_w
         bottom = cy - half_h
-        right  = cx + half_w
-        top    = cy + half_h
+        right = cx + half_w
+        top = cy + half_h
         return left, bottom, right, top
 
-    # 피격 효과 시작
     def start_hit_effect(self, knockback_dir=None):
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
 
-        # 넉백 방향이 명시되면 그걸 쓰고, 아니면 바라보는 방향의 반대로
         if knockback_dir is not None:
             self.knockback_dir = knockback_dir
         else:
             self.knockback_dir = -self.face_dir
 
-    # 데미지 처리 + 무적 시간 처리
     def apply_damage(self, amount, knockback_dir=None):
-        # 이미 죽었거나 무적이면 무시
         if self.hp <= 0:
             return
         if self.hit_timer > 0.0:
@@ -465,14 +467,18 @@ class EvilKnight:
         self.hp = max(0, self.hp - amount)
         self.start_hit_effect(knockback_dir)
 
+    # 각성 발동
+    def super_power(self):
+        if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
+            self.awakened = True
+            self.speed_scale = SUPER_SPEED_SCALE
+
     def run_demo(self):
-        # 한 번 데모 끝나면 더 이상 수행 X
         if self.hp <= 0 or self.demo_done:
             return
 
         now = get_time()
 
-        # 처음 한 번만 시작 시간 설정
         if not self.demo_started:
             self.demo_started = True
             self.demo_phase = 0
@@ -481,7 +487,6 @@ class EvilKnight:
 
         elapsed = now - self.demo_t0
 
-        # 0단계: 잠깐 서 있다가 왼쪽으로 달리기 시작
         if self.demo_phase == 0:
             if elapsed > 0.3:
                 self.dir = -1
@@ -490,47 +495,40 @@ class EvilKnight:
                 self.demo_phase = 1
                 self.demo_t0 = now
 
-        # 1단계: 왼쪽으로 조금 달린 뒤 → 오른쪽으로 방향 전환
         elif self.demo_phase == 1:
             if elapsed > 2.4:
                 self.dir = 1
                 self.face_dir = 1
-                # RUN 상태 유지, 방향만 바뀜
                 self.demo_phase = 2
                 self.demo_t0 = now
 
-        # 2단계: 오른쪽으로 조금 더 달린 뒤 → 점프 시작
         elif self.demo_phase == 2:
             if elapsed > 1.2:
-                self.dir = 0  # 점프는 제자리에서
+                self.dir = 0
                 self.state_machine.change_state(self.JUMP)
                 self.demo_phase = 3
                 self.demo_t0 = now
 
-        # 3단계: 점프/낙하가 어느 정도 진행되면 → 구르기
         elif self.demo_phase == 3:
             if elapsed > 1.0:
                 self.state_machine.change_state(self.ROLL)
                 self.demo_phase = 4
                 self.demo_t0 = now
 
-        # 4단계: 구르기 끝난 뒤 → 공격1 강제
         elif self.demo_phase == 4:
             if elapsed > 0.7:
-                self.next_attack_type = 1  # Attack1 강제
+                self.next_attack_type = 1
                 self.state_machine.change_state(self.ATTACK)
                 self.demo_phase = 5
                 self.demo_t0 = now
 
-        # 5단계: 첫 번째 공격 끝난 뒤 → 공격2 강제
         elif self.demo_phase == 5:
             if elapsed > 0.7:
-                self.next_attack_type = 2  # Attack2 강제
+                self.next_attack_type = 2
                 self.state_machine.change_state(self.ATTACK)
                 self.demo_phase = 6
                 self.demo_t0 = now
 
-        # 6단계: 두 번째 공격까지 끝나면 → Idle로 마무리
         elif self.demo_phase == 6:
             if elapsed > 0.7:
                 self.demo_done = True
@@ -538,7 +536,6 @@ class EvilKnight:
                 self.state_machine.change_state(self.IDLE)
 
     def handle_event(self, e):
-        # 아직 플레이어 입력 없음(나중에 AI에서 직접 state 변경 예정)
         pass
 
     def update(self):
@@ -546,12 +543,11 @@ class EvilKnight:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 피격 타이머/넉백 처리
+        # 피격/넉백
         if self.hit_timer > 0.0:
             self.hit_timer = max(0.0, self.hit_timer - dt)
         if self.knockback_timer > 0.0:
             self.knockback_timer = max(0.0, self.knockback_timer - dt)
-            # knockback_dir 방향으로 밀려남
             self.x += self.knockback_dir * HIT_KNOCKBACK_SPEED_PPS * dt
             self.x = max(self.left_bound, min(self.x, self.right_bound))
 
@@ -563,11 +559,27 @@ class EvilKnight:
             self.state_machine.update()
             return
 
+        # 각성 체크
+        self.super_power()
+
+        # 오라 애니메이션
+        if self.awakened:
+            self.aura_frame = (self.aura_frame
+                               + self.aura_max_frames * ACTION_PER_TIME * dt) % self.aura_max_frames
+
         self.run_demo()
         self.state_machine.update()
 
+    def draw_aura(self):
+        fi = int(self.aura_frame) % self.aura_max_frames
+        sx = fi * self.aura_frame_w
+        sy = 0
+        dw = int(self.aura_frame_w * self.aura_scale)
+        dh = int(self.aura_frame_h * self.aura_scale)
+        self.aura_sheet.clip_draw(sx, sy, self.aura_frame_w, self.aura_frame_h,
+                                  self.x, self.y, dw, dh)
+
     def draw(self):
-        # 깜빡임: hit_timer 동안 일정 주기로 스프라이트 숨기기
         visible = True
         if self.hit_timer > 0.0:
             elapsed = HIT_EFFECT_DURATION - self.hit_timer
@@ -575,6 +587,8 @@ class EvilKnight:
                 visible = False
 
         if visible:
+            if self.awakened:
+                self.draw_aura()
             self.state_machine.draw()
 
         left, bottom, right, top = self.get_bb()
@@ -584,6 +598,5 @@ class EvilKnight:
         if atk_bb is not None:
             draw_rectangle(*atk_bb)
 
-    # 나중에 테스트하거나 AI에서 호출하기 편하게 공격 트리거용 함수 하나 추가
     def start_attack(self):
         self.state_machine.change_state(self.ATTACK)
