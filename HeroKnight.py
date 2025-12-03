@@ -3,7 +3,6 @@ import os
 import game_framework
 
 
-
 # self.vy(수직속도), self.g(중력), self.jump_speed(초기속도), self.ground_y(바닥 높이)
 # self.air_vx(공중에서 유지할 수평 속도),
 
@@ -45,6 +44,9 @@ MAX_DT = 1.0 / 30.0
 HIT_EFFECT_DURATION = 2.0        # 2초 동안 깜빡
 HIT_KNOCKBACK_DURATION = 0.2     # 0.2초 동안 넉백
 HIT_KNOCKBACK_SPEED_PPS = 250.0  # 넉백 속도
+
+# 방어 성공 시 넉백 속도(조금만 밀리도록)
+BLOCK_KNOCKBACK_SPEED_PPS = 100.0
 
 
 
@@ -405,6 +407,13 @@ class Boy:
         self.hit_timer = 0.0
         self.knockback_timer = 0.0
         self.knockback_dir = 0   # -1 / 0 / 1
+        self.knockback_speed = HIT_KNOCKBACK_SPEED_PPS
+
+        # 방어 게이지 (최대 3칸)
+        self.guard_max = 3
+        self.guard_current = self.guard_max
+        self.guard_recharge_delay = 3.0       # 3초마다 한 칸 회복
+        self.guard_recharge_timer = 0.0
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)
@@ -520,6 +529,9 @@ class Boy:
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
 
+        # 일반 피격일 때는 기본 넉백 속도 사용
+        self.knockback_speed = HIT_KNOCKBACK_SPEED_PPS
+
         # 넉백 방향이 명시되면 그걸 쓰고, 아니면 바라보는 방향의 반대
         if knockback_dir is not None:
             self.knockback_dir = knockback_dir
@@ -536,6 +548,24 @@ class Boy:
 
         self.hp = max(0, self.hp - amount)
         self.start_hit_effect(knockback_dir)
+
+    # 방어 성공 시 넉백만 적용(깜빡임/무적 없음)
+    def start_block_knockback(self, knockback_dir):
+        if knockback_dir is None:
+            knockback_dir = -self.face_dir
+        self.knockback_dir = knockback_dir
+        self.knockback_timer = HIT_KNOCKBACK_DURATION
+        self.knockback_speed = BLOCK_KNOCKBACK_SPEED_PPS
+
+    # 방어 게이지 1칸 소모 + 넉백 적용
+    def consume_guard(self, knockback_dir):
+        if self.guard_current <= 0:
+            return False
+        self.guard_current -= 1
+        # 새로 막은 순간부터 다시 3초 카운트
+        self.guard_recharge_timer = 0.0
+        self.start_block_knockback(knockback_dir)
+        return True
 
     def handle_event(self, e):
 
@@ -614,7 +644,7 @@ class Boy:
         if self.knockback_timer > 0.0:
             self.knockback_timer = max(0.0, self.knockback_timer - dt)
             # knockback_dir 방향으로 밀려남
-            self.x += self.knockback_dir * HIT_KNOCKBACK_SPEED_PPS * dt
+            self.x += self.knockback_dir * self.knockback_speed * dt
             self.x = max(self.left_bound, min(self.x, self.right_bound))
 
         if self.hp <= 0:
@@ -626,6 +656,19 @@ class Boy:
                 self.state_machine.change_state(self.DIE)
             self.state_machine.update()
             return
+
+        # 방어 게이지 자동 회복 (3초마다 한 칸씩)
+        if self.guard_current < self.guard_max:
+            self.guard_recharge_timer += dt
+            if self.guard_recharge_timer >= self.guard_recharge_delay:
+                self.guard_current += 1
+                if self.guard_current > self.guard_max:
+                    self.guard_current = self.guard_max
+                # 한 칸 채울 때마다 다시 카운트
+                self.guard_recharge_timer = 0.0
+        else:
+            # 풀 게이지일 땐 타이머 유지할 필요 없음
+            self.guard_recharge_timer = 0.0
 
         if self.roll_cool > 0.0:
             self.roll_cool = max(0.0, self.roll_cool - game_framework.frame_time)
@@ -646,4 +689,4 @@ class Boy:
         draw_rectangle(left, bottom, right, top)
         atk_bb = self.get_attack_bb()
         if atk_bb is not None:
-            draw_rectangle(*atk_bb)
+            draw_rectangle(atk_bb[0], atk_bb[1], atk_bb[2], atk_bb[3])

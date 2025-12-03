@@ -1,6 +1,6 @@
 from pico2d import *
 from grass import Grass, CaveGround, CastleGround
-from HeroKnight import Boy
+from HeroKnight import Boy, Block
 from EvilKnight import EvilKnight
 from stage_background import Stage1Background, Stage2Background, Stage3Background
 from portal import Portal
@@ -72,8 +72,6 @@ def resolve_attack(attacker, defender):
         return
 
     # --- 넉백 방향 결정 ---
-    # 공격자가 왼쪽에 있으면 피격자를 오른쪽(+1)으로,
-    # 공격자가 오른쪽에 있으면 피격자를 왼쪽(-1)으로 민다.
     if hasattr(attacker, 'x') and hasattr(defender, 'x'):
         if attacker.x < defender.x:
             knock_dir = 1    # 오른쪽으로 넉백
@@ -82,6 +80,25 @@ def resolve_attack(attacker, defender):
     else:
         # 혹시 모를 예외용 – 위치가 없으면 그냥 바라보는 반대
         knock_dir = -getattr(defender, 'face_dir', 1)
+
+    # --- HeroKnight가 막고 있는 경우: 정면 + 게이지 남아 있으면 데미지 대신 방어 ---
+    if isinstance(defender, Boy) and isinstance(defender.state_machine.cur_state, Block):
+        front = False
+        if hasattr(attacker, 'x'):
+            # Hero가 오른쪽을 보고 있으면, 오른쪽에서 오는 공격만 정면
+            if defender.face_dir == 1 and attacker.x >= defender.x:
+                front = True
+            # Hero가 왼쪽을 보고 있으면, 왼쪽에서 오는 공격만 정면
+            elif defender.face_dir == -1 and attacker.x <= defender.x:
+                front = True
+
+        if front and getattr(defender, 'guard_current', 0) > 0:
+            # 방어 게이지 1칸 소모 + 깜빡임 없이 소량 넉백
+            if defender.consume_guard(knock_dir):
+                attacker.did_hit = True
+                print(f'Guard! {defender.__class__.__name__} guard = {defender.guard_current}')
+                return
+        # 정면이 아니거나 게이지가 0이면 그냥 맞는 처리로 내려감
 
     # HP 감소 + 피격 연출
     if hasattr(defender, 'apply_damage'):
@@ -111,6 +128,24 @@ def draw_hp_bars(boy, evil):
     if boy.hp > 0:
         cur_w = bar_w * boy.hp / boy.max_hp
         draw_rectangle(x1, y1, x1 + cur_w, y2)
+
+    # ----- Hero Guard (HP 바로 아래 3칸 게이지) -----
+    if hasattr(boy, 'guard_max') and hasattr(boy, 'guard_current'):
+        segments = boy.guard_max
+        if segments > 0:
+            guard_y2 = y1 - 5
+            guard_y1 = guard_y2 - bar_h
+            seg_w = bar_w / segments
+            gap = 2  # 칸 사이 약간의 간격
+
+            for i in range(segments):
+                gx1 = margin + i * seg_w
+                gx2 = gx1 + seg_w - gap
+                # 슬롯 테두리
+                draw_rectangle(gx1, guard_y1, gx2, guard_y2)
+                # 남아있는 칸만 안쪽에 한 번 더 그려서 구분
+                if i < boy.guard_current:
+                    draw_rectangle(gx1 + 1, guard_y1 + 1, gx2 - 1, guard_y2 - 1)
 
     # ----- Evil HP (오른쪽 상단, 오른쪽→왼쪽으로 줄어듦) -----
     x2 = cw - margin
