@@ -46,12 +46,22 @@ def update():
 
 def draw():
     clear_canvas()
-    # 타이틀 이미지를 화면 중앙에 그리기
+
     cw = get_canvas_width()
     ch = get_canvas_height()
-    image.draw(cw // 2, ch // 2)
-    update_canvas()
 
+    # 원본 이미지 크기
+    iw, ih = image.w, image.h
+
+    # 화면을 꽉 채우도록 스케일 결정 (일부는 화면 밖으로 잘릴 수 있음)
+    scale = max(cw / iw, ch / ih)
+    draw_w = iw * scale
+    draw_h = ih * scale
+
+    # 화면 중앙에, 꽉 차도록 그리기
+    image.draw(cw // 2, ch // 2, draw_w, draw_h)
+
+    update_canvas()
 
 def pause():
     pass
