@@ -49,6 +49,7 @@ BLOCK_KNOCKBACK_SPEED_PPS = 100.0
 # 각성 관련 상수
 SUPER_THRESHOLD_HP = 50          # HP 50 미만에서 각성
 SUPER_SPEED_SCALE = 1.3          # 이동 속도 배율
+SUPER_SCALE_FACTOR = 1.4         # 캐릭터 크기 배율
 
 
 def right_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_RIGHT
@@ -356,7 +357,11 @@ class Boy:
 
         self.frame = 0.0
         self.fps = 10
-        self.scale = 2.0
+
+        # 기본 크기와 현재 크기
+        self.base_scale = 2.0
+        self.scale = self.base_scale
+
         self.x, self.y = 320, 80
         self.prev_time = get_time()
 
@@ -398,16 +403,6 @@ class Boy:
         # 각성 상태
         self.awakened = False
         self.speed_scale = 1.0
-
-        # 오라(파란색) - cave/aura1.png 에서 로드
-        self.aura_sheet = load_image(cave_path('aura1.png'))
-        self.aura_cols = 4
-        self.aura_rows = 1
-        self.aura_frame_w = self.aura_sheet.w // self.aura_cols
-        self.aura_frame_h = self.aura_sheet.h // self.aura_rows
-        self.aura_frame = 0.0
-        self.aura_max_frames = self.aura_cols
-        self.aura_scale = 2.4
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)
@@ -561,6 +556,8 @@ class Boy:
         if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
             self.awakened = True
             self.speed_scale = SUPER_SPEED_SCALE
+            # 각성 시 캐릭터 전체 크기 1.4배
+            self.scale = self.base_scale * SUPER_SCALE_FACTOR
 
     def handle_event(self, e):
         if self.hp <= 0:
@@ -669,21 +666,7 @@ class Boy:
         if self.roll_cool > 0.0:
             self.roll_cool = max(0.0, self.roll_cool - game_framework.frame_time)
 
-        # 각성 오라 애니메이션
-        if self.awakened:
-            self.aura_frame = (self.aura_frame
-                               + self.aura_max_frames * ACTION_PER_TIME * dt) % self.aura_max_frames
-
         self.state_machine.update()
-
-    def draw_aura(self):
-        fi = int(self.aura_frame) % self.aura_max_frames
-        sx = fi * self.aura_frame_w
-        sy = 0
-        dw = int(self.aura_frame_w * self.aura_scale)
-        dh = int(self.aura_frame_h * self.aura_scale)
-        self.aura_sheet.clip_draw(sx, sy, self.aura_frame_w, self.aura_frame_h,
-                                  self.x, self.y, dw, dh)
 
     def draw(self):
         visible = True
@@ -693,8 +676,7 @@ class Boy:
                 visible = False
 
         if visible:
-            if self.awakened:
-                self.draw_aura()
+            # 오라 없이 캐릭터만 그림
             self.state_machine.draw()
 
         left, bottom, right, top = self.get_bb()

@@ -45,6 +45,7 @@ HIT_KNOCKBACK_SPEED_PPS = 250.0
 # 각성 관련 상수
 SUPER_THRESHOLD_HP = 50
 SUPER_SPEED_SCALE = 1.3
+SUPER_SCALE_FACTOR = 1.4  # 캐릭터 크기 배율
 
 
 class Idle:
@@ -327,7 +328,10 @@ class EvilKnight:
         self.body_h_ratio = 0.50
         self.bb_y_offset_ratio = 0.25
 
-        self.scale = 2.0
+        # 기본 크기와 현재 크기
+        self.base_scale = 2.0
+        self.scale = self.base_scale
+
         self.x, self.y = 600, 80
         self.face_dir = -1
         self.dir = 0
@@ -349,16 +353,6 @@ class EvilKnight:
         # 각성 상태
         self.awakened = False
         self.speed_scale = 1.0
-
-        # 붉은 오라 - cave/aura2.png 에서 로드
-        self.aura_sheet = load_image(cave_path('aura2.png'))
-        self.aura_cols = 4
-        self.aura_rows = 1
-        self.aura_frame_w = self.aura_sheet.w // self.aura_cols
-        self.aura_frame_h = self.aura_sheet.h // self.aura_rows
-        self.aura_frame = 0.0
-        self.aura_max_frames = self.aura_cols
-        self.aura_scale = 2.4
 
         self.next_attack_type = 0
 
@@ -472,6 +466,8 @@ class EvilKnight:
         if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
             self.awakened = True
             self.speed_scale = SUPER_SPEED_SCALE
+            # 각성 시 캐릭터 전체 크기 1.4배
+            self.scale = self.base_scale * SUPER_SCALE_FACTOR
 
     def run_demo(self):
         if self.hp <= 0 or self.demo_done:
@@ -562,22 +558,8 @@ class EvilKnight:
         # 각성 체크
         self.super_power()
 
-        # 오라 애니메이션
-        if self.awakened:
-            self.aura_frame = (self.aura_frame
-                               + self.aura_max_frames * ACTION_PER_TIME * dt) % self.aura_max_frames
-
         self.run_demo()
         self.state_machine.update()
-
-    def draw_aura(self):
-        fi = int(self.aura_frame) % self.aura_max_frames
-        sx = fi * self.aura_frame_w
-        sy = 0
-        dw = int(self.aura_frame_w * self.aura_scale)
-        dh = int(self.aura_frame_h * self.aura_scale)
-        self.aura_sheet.clip_draw(sx, sy, self.aura_frame_w, self.aura_frame_h,
-                                  self.x, self.y, dw, dh)
 
     def draw(self):
         visible = True
@@ -587,8 +569,7 @@ class EvilKnight:
                 visible = False
 
         if visible:
-            if self.awakened:
-                self.draw_aura()
+            # 오라 없이 캐릭터만 그림
             self.state_machine.draw()
 
         left, bottom, right, top = self.get_bb()
