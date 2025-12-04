@@ -35,11 +35,23 @@ def resolve_body_block(a, b):
     al, ab, ar, at = a.get_bb()
     bl, bb, br, bt = b.get_bb()
 
+    # 서로 안 겹치면 아무것도 안 함
     if ar <= bl or br <= al:
         return
     if at <= bb or bt <= ab:
         return
 
+    # --- 롤링 중이면 몸 히트박스 통과 ---
+    # a가 구르는 중이면 통과
+    if hasattr(a, 'state_machine') and hasattr(a, 'ROLL'):
+        if a.state_machine.cur_state == a.ROLL:
+            return
+    # b가 구르는 중이면 통과
+    if hasattr(b, 'state_machine') and hasattr(b, 'ROLL'):
+        if b.state_machine.cur_state == b.ROLL:
+            return
+
+    # 롤링이 아닐 때만 수평 충돌 해결
     if a.x < b.x:
         shift = bl - ar
     else:
@@ -62,8 +74,14 @@ def resolve_attack(attacker, defender):
     if not rects_intersect(atk_bb, def_bb):
         return
 
+    # 이미 한 번 맞춘 공격이면 중복 히트 방지
     if getattr(attacker, 'did_hit', False):
         return
+
+    # --- 롤링 중인 수비자는 완전 무적 (칼 공격 무시) ---
+    if hasattr(defender, 'state_machine') and hasattr(defender, 'ROLL'):
+        if defender.state_machine.cur_state == defender.ROLL:
+            return
 
     # 넉백 방향
     if hasattr(attacker, 'x') and hasattr(defender, 'x'):

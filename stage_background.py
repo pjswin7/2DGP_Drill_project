@@ -5,14 +5,14 @@ import game_framework
 
 BASE = os.path.dirname(__file__)
 
-def kenny_bg(*names):
 
+def kenny_bg(*names):
     return os.path.join(BASE, 'kenney_platformer-pack-redux', 'PNG', 'Backgrounds', *names)
 
 
 class Stalactite:
     image = None
-    FALL_SPEED_PPS = 350.0  # 떨어지는 속도(픽셀/초), 필요하면 나중에 조절
+    FALL_SPEED_PPS = 350.0  # 떨어지는 속도(픽셀/초)
 
     def __init__(self, x, y):
         if Stalactite.image is None:
@@ -25,22 +25,16 @@ class Stalactite:
         if not self.active:
             return
 
-        # dt 기반으로 아래로 이동
         self.y -= Stalactite.FALL_SPEED_PPS * game_framework.frame_time
 
-        # 화면 아래로 완전히 나가면 비활성화
         if self.y < -Stalactite.image.h:
             self.active = False
 
     def draw(self):
         if self.active:
             Stalactite.image.draw(self.x, self.y)
-            # 디버그용
-            # l, b, r, t = self.get_bb()
-            # draw_rectangle(l, b, r, t)
 
     def get_bb(self):
-        # 너무 넓게 맞지 않게, 가로는 좀 줄여서 사용
         half_w = Stalactite.image.w * 0.25
         half_h = Stalactite.image.h * 0.5
         left   = self.x - half_w
@@ -56,11 +50,9 @@ class CaveStalactites:
         self.spawn_timer = 0.0
 
     def update(self):
-
         self.spawn_timer -= game_framework.frame_time
         if self.spawn_timer <= 0.0:
             self.spawn_one()
-
             self.spawn_timer = random.uniform(1.0, 2.0)
 
         for s in self.stones:
@@ -100,6 +92,11 @@ class CaveStalactites:
                 if getattr(obj, 'hp', 0) <= 0:
                     continue
 
+                # --- 롤링 중이면 종유석에도 무적 ---
+                if hasattr(obj, 'state_machine') and hasattr(obj, 'ROLL'):
+                    if obj.state_machine.cur_state == obj.ROLL:
+                        continue
+
                 ol, ob, or_, ot = obj.get_bb()
                 # AABB 충돌 체크
                 if sl > or_ or sr < ol or sb > ot or st < ob:
@@ -120,7 +117,6 @@ class CaveStalactites:
 
 class Stage1Background:
     def __init__(self):
-
         self.image = load_image(kenny_bg('colored_land.png'))
 
     def update(self):
@@ -134,14 +130,12 @@ class Stage1Background:
 
 class Stage2Background:
     def __init__(self):
-
         self.image = load_image(os.path.join(BASE, 'cave', 'cave_background.png'))
 
         # 동굴 종유석 객체 생성
         self.hazards = CaveStalactites()
 
     def update(self):
-
         self.hazards.update()
 
     def draw(self):
