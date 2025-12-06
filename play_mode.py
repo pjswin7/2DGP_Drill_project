@@ -237,7 +237,8 @@ def draw_status_bars(boy, evil):
     draw_bar_slots(health_bar_image, hp_slots, HP_SLOTS, hero_left, hero_hp_y)
 
     # Hero 구르기(연속 게이지)
-    remain = getattr(boy, 'roll_cooltime', 0.0)
+    # Boy 클래스에서 사용하는 실제 쿨타임 변수 이름은 roll_cool 이다.
+    remain = getattr(boy, 'roll_cool', 0.0)
     if ROLL_COOLTIME > 0.0:
         roll_ratio = 1.0 - (remain / ROLL_COOLTIME)
     else:
@@ -316,7 +317,7 @@ def init():
     base_dir = os.path.dirname(__file__)
     health_bar_image = load_image(os.path.join(base_dir, 'cave', 'health_bar.png'))
     roll_bar_image = load_image(os.path.join(base_dir, 'cave', 'roll_bar.png'))
-    block_bar_image = load_image(os.path.join(base_dir, 'cave', 'block_bar.png'))
+    block_bar_image = load_image(os.path.join(base_dir, 'cave', 'block_bar.png'))  # 방어 바 전용 이미지
 
     _current_time = time.time()
     print('play_mode init')
