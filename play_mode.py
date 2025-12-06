@@ -311,6 +311,11 @@ def init():
     place_on_ground(boy, grass)
     place_on_ground(evil, grass)
 
+    # Evil AI가 참조할 기본 정보
+    evil.target = boy
+    evil.stage = stage
+    evil.bg = background
+
     portal = None
 
     # 상태바 이미지 로드
@@ -356,6 +361,11 @@ def handle_events():
                         place_on_ground(boy, grass)
                         place_on_ground(evil, grass)
 
+                        # Evil AI 대상/스테이지 정보 갱신
+                        evil.target = boy
+                        evil.stage = stage
+                        evil.bg = background
+
                         boy.state_machine.change_state(boy.IDLE)
                         boy.dir = 0
                         boy.vy = 0.0
@@ -372,6 +382,11 @@ def handle_events():
                         place_on_ground(boy, grass)
                         place_on_ground(evil, grass)
 
+                        # Evil AI 대상/스테이지 정보 갱신
+                        evil.target = boy
+                        evil.stage = stage
+                        evil.bg = background
+
                         boy.state_machine.change_state(boy.IDLE)
                         boy.dir = 0
                         boy.vy = 0.0
@@ -381,7 +396,7 @@ def handle_events():
 
 def update():
     """매 프레임 게임 로직"""
-    global background, grass, boy, evil, portal, _current_time
+    global background, grass, boy, evil, portal, _current_time, stage
 
     # frame_time 계산
     now = time.time()
@@ -395,6 +410,13 @@ def update():
 
     background.update()
     grass.update()
+
+    # Evil AI가 참조할 최신 정보 전달
+    if evil is not None:
+        evil.target = boy
+        evil.stage = stage
+        evil.bg = background
+
     boy.update()
     evil.update()
 
