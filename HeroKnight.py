@@ -394,8 +394,8 @@ class Boy:
         self.knockback_dir = 0
         self.knockback_speed = HIT_KNOCKBACK_SPEED_PPS
 
-        # 방어 게이지
-        self.guard_max = 3
+        # 방어 게이지 (그림에 맞게 4칸)
+        self.guard_max = 4
         self.guard_current = self.guard_max
         self.guard_recharge_delay = 3.0  # 3초마다 1칸 회복
         self.guard_recharge_timer = 0.0
