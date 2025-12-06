@@ -1,4 +1,3 @@
-# play_mode.py
 from pico2d import *
 from grass import Grass, CaveGround, CastleGround
 from HeroKnight import Boy, Block, ROLL_COOLTIME
@@ -146,7 +145,7 @@ def draw_status_bars(boy, evil):
 
     side_margin = 40
     top_margin = 40
-    line_margin = 0        # 바들 사이 여유 간격(픽셀) – 거의 붙은 느낌
+    line_margin = 0        # 바들 사이 여유 간격(픽셀)
 
     target_w = BAR_TARGET_WIDTH
 
@@ -237,7 +236,6 @@ def draw_status_bars(boy, evil):
     draw_bar_slots(health_bar_image, hp_slots, HP_SLOTS, hero_left, hero_hp_y)
 
     # Hero 구르기(연속 게이지)
-    # Boy 클래스에서 사용하는 실제 쿨타임 변수 이름은 roll_cool 이다.
     remain = getattr(boy, 'roll_cool', 0.0)
     if ROLL_COOLTIME > 0.0:
         roll_ratio = 1.0 - (remain / ROLL_COOLTIME)
@@ -277,6 +275,26 @@ def place_on_ground(obj, ground):
         obj.ground_y = obj.y
 
 
+def reset_hero_for_stage(boy):
+    """
+    스테이지 입장 시 Hero 상태 리셋:
+    - HP 풀로
+    - 가드 풀로
+    - 각성 해제 / 크기 원래대로
+    - 구르기 쿨 / 피격효과 초기화
+    """
+    boy.hp = boy.max_hp
+    boy.guard_current = boy.guard_max
+    boy.awakened = False
+    boy.speed_scale = 1.0
+    boy.scale = boy.base_scale
+
+    boy.roll_cool = 0.0
+    boy.hit_timer = 0.0
+    boy.knockback_timer = 0.0
+    boy.knockback_dir = 0
+
+
 # ----------------------
 # 여기서부터 게임 모드용 전역 변수
 # ----------------------
@@ -308,13 +326,16 @@ def init():
     boy = Boy()
     evil = EvilKnight()
 
-    place_on_ground(boy, grass)
-    place_on_ground(evil, grass)
+    # Hero 상태 리셋
+    reset_hero_for_stage(boy)
 
-    # Evil AI가 참조할 기본 정보
+    # Evil AI에 타겟 / 스테이지 / 배경 연결
     evil.target = boy
     evil.stage = stage
     evil.bg = background
+
+    place_on_ground(boy, grass)
+    place_on_ground(evil, grass)
 
     portal = None
 
@@ -322,7 +343,7 @@ def init():
     base_dir = os.path.dirname(__file__)
     health_bar_image = load_image(os.path.join(base_dir, 'cave', 'health_bar.png'))
     roll_bar_image = load_image(os.path.join(base_dir, 'cave', 'roll_bar.png'))
-    block_bar_image = load_image(os.path.join(base_dir, 'cave', 'block_bar.png'))  # 방어 바 전용 이미지
+    block_bar_image = load_image(os.path.join(base_dir, 'cave', 'block_bar.png'))
 
     _current_time = time.time()
     print('play_mode init')
@@ -357,11 +378,15 @@ def handle_events():
                         portal = None
                         evil = EvilKnight()
 
+                        # Hero 위치 / 상태 리셋
                         boy.x = 120
+                        reset_hero_for_stage(boy)
                         place_on_ground(boy, grass)
+
+                        # Evil 위치 세팅
                         place_on_ground(evil, grass)
 
-                        # Evil AI 대상/스테이지 정보 갱신
+                        # Evil AI 연결
                         evil.target = boy
                         evil.stage = stage
                         evil.bg = background
@@ -378,11 +403,15 @@ def handle_events():
                         portal = None
                         evil = EvilKnight()
 
+                        # Hero 위치 / 상태 리셋
                         boy.x = 120
+                        reset_hero_for_stage(boy)
                         place_on_ground(boy, grass)
+
+                        # Evil 위치 세팅
                         place_on_ground(evil, grass)
 
-                        # Evil AI 대상/스테이지 정보 갱신
+                        # Evil AI 연결
                         evil.target = boy
                         evil.stage = stage
                         evil.bg = background
@@ -410,13 +439,6 @@ def update():
 
     background.update()
     grass.update()
-
-    # Evil AI가 참조할 최신 정보 전달
-    if evil is not None:
-        evil.target = boy
-        evil.stage = stage
-        evil.bg = background
-
     boy.update()
     evil.update()
 
@@ -437,6 +459,7 @@ def update():
     resolve_attack(evil, boy)
 
     if stage == 2:
+        # 종유석 충돌(데미지만) + Evil AI는 background.hazards를 직접 보고 회피
         background.handle_hazard_collision(boy, evil)
 
 
