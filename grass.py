@@ -3,17 +3,13 @@ import os
 
 BASE = os.path.dirname(__file__)
 
-# 화면 기준 1/3쯤 되는 높이 – 1,3스테 땅 윗면 기준
+# 화면 기준 1/3쯤 되는 높이 – 1스테 땅 윗면 기준
 GROUND_TOP_Y = 90
 
 # 2스테이지(동굴)에서 "충돌선"을 그림보다 얼마나 아래로 내릴지 (픽셀)
 # 캐릭터가 여전히 떠 보이면 이 값을 더 키우고,
 # 너무 파묻혀 보이면 값을 줄이면 된다.
 CAVE_GROUND_DROP = 20
-
-# 3스테이지 용암 타일을 서로 얼마나 겹쳐 그릴지 (픽셀)
-# 빈 칸이 보이면 값을 더 키우고, 너무 많이 겹치면 줄이면 된다.
-LAVA_TILE_OVERLAP = 25
 
 
 def kenny_path(*names):
@@ -98,47 +94,5 @@ class CaveGround:
             x += w
 
         # 충돌 박스는 내려간 top/bottom 기준으로 그림
-        left, bottom, right, top = self.get_bb()
-        draw_rectangle(left, bottom, right, top)
-
-
-class CastleGround:
-    """3스테이지 성 앞 용암 바닥 – 새 타일을 1스테처럼 가로로 이어 붙임"""
-    def __init__(self):
-        # 3스테이지 땅 타일 : 새 용암 바닥 타일 사용
-        self.tile = load_image(os.path.join(BASE, 'cave', 'lava_ground_cracked_tileset.png'))
-
-        # 1스테이지와 같은 높이에 땅 윗면(top)을 둔다.
-        self.top = GROUND_TOP_Y
-        self.bottom = self.top - self.tile.h
-
-    def get_bb(self):
-        cw = get_canvas_width()
-        left = 0
-        right = cw
-        return left, self.bottom, right, self.top
-
-    def update(self):
-        pass
-
-    def draw(self):
-        cw = get_canvas_width()
-        w, h = self.tile.w, self.tile.h
-
-        # 공중에 떠 있는 한 줄만 그리기 (1스테와 같은 방식)
-        y = (self.bottom + self.top) / 2
-
-        # 겹치기 적용: 한 타일의 오른쪽과 다음 타일의 왼쪽이
-        # LAVA_TILE_OVERLAP 만큼 서로 덮이도록 한다.
-        step = w - LAVA_TILE_OVERLAP
-
-        # 처음 타일은 왼쪽이 약간 화면 밖으로 나가도록 시작해서
-        # 왼쪽 끝에 틈이 생기지 않게 한다.
-        x = w // 2 - LAVA_TILE_OVERLAP
-        while x < cw + w:
-            self.tile.draw(x, y)
-            x += step
-
-        # 충돌 박스 (땅 한 줄만)
         left, bottom, right, top = self.get_bb()
         draw_rectangle(left, bottom, right, top)

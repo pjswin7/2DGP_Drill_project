@@ -1,8 +1,8 @@
 from pico2d import *
-from grass import Grass, CaveGround, CastleGround
+from grass import Grass, CaveGround
 from HeroKnight import Boy, Block, ROLL_COOLTIME
 from EvilKnight import EvilKnight
-from stage_background import Stage1Background, Stage2Background, Stage3Background
+from stage_background import Stage1Background, Stage2Background
 from portal import Portal
 import time
 import game_framework
@@ -394,31 +394,7 @@ def handle_events():
                         boy.state_machine.change_state(boy.IDLE)
                         boy.dir = 0
                         boy.vy = 0.0
-
-                    elif stage == 2:
-                        stage = 3
-                        background = Stage3Background()
-                        grass = CastleGround()
-
-                        portal = None
-                        evil = EvilKnight()
-
-                        # Hero 위치 / 상태 리셋
-                        boy.x = 120
-                        reset_hero_for_stage(boy)
-                        place_on_ground(boy, grass)
-
-                        # Evil 위치 세팅
-                        place_on_ground(evil, grass)
-
-                        # Evil AI 연결
-                        evil.target = boy
-                        evil.stage = stage
-                        evil.bg = background
-
-                        boy.state_machine.change_state(boy.IDLE)
-                        boy.dir = 0
-                        boy.vy = 0.0
+                    # stage == 2 인 상태에서의 추가 스테이지 진입은 없음 (2스테이지가 마지막)
         else:
             boy.handle_event(e)
 
