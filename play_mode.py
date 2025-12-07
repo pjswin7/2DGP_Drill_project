@@ -36,36 +36,36 @@ def resolve_ground(obj, ground):
                     obj.state_machine.handle_state_event(('LANDED_RUN', None))
 
 
-def resolve_body_block(a, b):
-    """캐릭터끼리 몸통끼리 겹치지 않도록 좌우로 밀어낸다."""
-    al, ab, ar, at = a.get_bb()
-    bl, bb, br, bt = b.get_bb()
-
-    if ar <= bl or br <= al:
-        return
-    if at <= bb or bt <= ab:
-        return
-
-    # 롤링 중이면 몸 히트박스 통과
-    if hasattr(a, 'state_machine') and hasattr(a, 'ROLL'):
-        if a.state_machine.cur_state == a.ROLL:
-            return
-    if hasattr(b, 'state_machine') and hasattr(b, 'ROLL'):
-        if b.state_machine.cur_state == b.ROLL:
-            return
-
-    # 롤링이 아닐 때만 수평 충돌 해결
-    if a.x < b.x:
-        shift = bl - ar
-    else:
-        shift = br - al
-    a.x += shift
-
-
 def rects_intersect(a, b):
     al, ab, ar, at = a
     bl, bb, br, bt = b
     return not (ar <= bl or br <= al or at <= bb or bt <= ab)
+
+
+def resolve_body_block(a, b):
+    al, ab, ar, at = a.get_bb()
+    bl, bb, br, bt = b.get_bb()
+
+    if not rects_intersect((al, ab, ar, at), (bl, bb, br, bt)):
+        return
+
+    overlap_left = ar - bl
+    overlap_right = br - al
+
+    if overlap_left < overlap_right:
+        dx = -overlap_left
+    else:
+        dx = overlap_right
+
+    a.x += dx / 2
+    b.x -= dx / 2
+
+
+def place_on_ground(obj, ground):
+    l, b, r, t = obj.get_bb()
+    gl, gb, gr, gt = ground.get_bb()
+    dy = gt - b
+    obj.y += dy
 
 
 def resolve_attack(attacker, defender):
@@ -178,18 +178,13 @@ def draw_status_bars(boy, evil):
         sx = 0
         sy = 0
 
-        dx = x_left + dst_w * 0.5
-        dy = y_center
+        img.clip_draw(sx, sy, src_w, full_h,
+                      x_left + dst_w / 2, y_center,
+                      dst_w, dst_h)
 
-        img.clip_draw(sx, sy, src_w, full_h, dx, dy, dst_w, dst_h)
-
-    def draw_bar_slots(img, cur_slots, max_slots, x_left, y_center):
-        """
-        칸 단위 게이지(체력 / 가드).
-        이미지 전체를 max_slots 칸이라고 보고,
-        cur_slots 개 만큼만 왼쪽부터 채운다.
-        """
-        if img is None or max_slots <= 0:
+    def draw_slot_bar(img, cur_slots, max_slots, x_left, y_center):
+        """칸 나뉜 게이지(HP, 가드) – 칸 수만큼만 채워서 그리기"""
+        if img is None:
             return
 
         cur_slots = max(0, min(cur_slots, max_slots))
@@ -210,79 +205,50 @@ def draw_status_bars(boy, evil):
 
         sx = 0
         sy = 0
-        dx = x_left + dst_w * 0.5
-        dy = y_center
 
-        img.clip_draw(int(sx), int(sy), int(src_w), int(full_h), dx, dy, dst_w, dst_h)
+        img.clip_draw(sx, sy, int(src_w), full_h,
+                      x_left + dst_w / 2, y_center,
+                      dst_w, dst_h)
 
-    # 각 바의 실제 높이(비율 유지 + 30% 축소)
-    hp_h = target_h(health_bar_image)
-    roll_h = target_h(roll_bar_image)
-    block_h = target_h(block_bar_image)
+    hero_x = side_margin
+    evil_x = cw - side_margin - BAR_TARGET_WIDTH
 
-    # ----- Hero 쪽 : 상단에 3줄 -----
-    hero_left = side_margin
-    hero_hp_y = ch - top_margin
-    hero_roll_y = hero_hp_y - ((hp_h + roll_h) / 2 + line_margin)
-    hero_block_y = hero_roll_y - ((roll_h + block_h) / 2 + line_margin)
+    cur_y = ch - top_margin
 
-    # Hero HP (10칸)
-    if boy.max_hp > 0:
-        hero_hp_ratio = boy.hp / boy.max_hp
+    # Hero HP
+    draw_slot_bar(health_bar_image,
+                  int(HP_SLOTS * boy.hp / boy.max_hp),
+                  HP_SLOTS,
+                  hero_x, cur_y)
+
+    cur_y -= target_h(health_bar_image) + line_margin
+
+    # Hero 구르기 쿨타임(연속 게이지) – 남은 비율이 아니라 "사용 가능 비율"로 표시
+    roll_ratio = 1.0 - min(boy.roll_cool / ROLL_COOLTIME, 1.0)
+    draw_bar(roll_bar_image, roll_ratio, hero_x, cur_y)
+
+    cur_y -= target_h(roll_bar_image) + line_margin
+
+    # Hero 가드 (칸 게이지)
+    if hasattr(boy, 'guard_max'):
+        guard_slots = int(HP_SLOTS * boy.guard_current / boy.guard_max)
     else:
-        hero_hp_ratio = 0.0
+        guard_slots = 0
+    draw_slot_bar(block_bar_image,
+                  guard_slots,
+                  HP_SLOTS,
+                  hero_x, cur_y)
 
-    hp_slots = int(hero_hp_ratio * HP_SLOTS)
-    draw_bar_slots(health_bar_image, hp_slots, HP_SLOTS, hero_left, hero_hp_y)
-
-    # Hero 구르기(연속 게이지)
-    remain = getattr(boy, 'roll_cool', 0.0)
-    if ROLL_COOLTIME > 0.0:
-        roll_ratio = 1.0 - (remain / ROLL_COOLTIME)
-    else:
-        roll_ratio = 1.0
-    roll_ratio = max(0.0, min(1.0, roll_ratio))
-
-    draw_bar(roll_bar_image, roll_ratio, hero_left, hero_roll_y)
-
-    # Hero 가드(칸 단위)
-    guard_max = getattr(boy, 'guard_max', 1)
-    guard_cur = getattr(boy, 'guard_current', 0)
-    draw_bar_slots(block_bar_image, guard_cur, guard_max, hero_left, hero_block_y)
-
-    # ----- Evil 체력 : 상단 오른쪽 HP 1줄 -----
-    if evil and hasattr(evil, 'max_hp') and evil.max_hp > 0:
-        evil_ratio = evil.hp / evil.max_hp
-    else:
-        evil_ratio = 0.0
-
-    evil_slots = int(evil_ratio * HP_SLOTS)
-
-    enemy_left = cw - side_margin - target_w
-    enemy_hp_y = hero_hp_y  # 같은 높이
-    draw_bar_slots(health_bar_image, evil_slots, HP_SLOTS, enemy_left, enemy_hp_y)
-
-
-def place_on_ground(obj, ground):
-    """객체를 현재 발 밑의 ground 위에 정확히 올려놓는다."""
-    ol, ob, or_, ot = obj.get_bb()
-    gl, gb, gr, gt = ground.get_bb()
-
-    dy = gt - ob
-    obj.y += dy
-
-    if hasattr(obj, 'ground_y'):
-        obj.ground_y = obj.y
+    # Evil HP – 오른쪽 상단
+    enemy_hp_slots = int(HP_SLOTS * evil.hp / evil.max_hp)
+    draw_slot_bar(health_bar_image,
+                  enemy_hp_slots,
+                  HP_SLOTS,
+                  evil_x, ch - top_margin)
 
 
 def reset_hero_for_stage(boy):
-    """
-    스테이지 입장 시 Hero 상태 리셋:
-    - HP 풀로
-    - 가드 풀로
-    - 각성 해제 / 크기 원래대로
-    - 구르기 쿨 / 피격효과 초기화
-    """
+    """스테이지 시작 시 Hero 기본 상태로 리셋"""
     boy.hp = boy.max_hp
     boy.guard_current = boy.guard_max
     boy.awakened = False
@@ -310,6 +276,13 @@ health_bar_image = None   # 체력 게이지
 roll_bar_image = None     # 구르기 게이지
 block_bar_image = None    # 방어/가드 게이지
 
+# 결과 화면 이미지
+lose_image = None         # YOU LOSE
+win_image = None          # YOU WIN
+
+# 게임 결과 상태: None, 'WIN', 'LOSE'
+game_result = None
+
 MAX_DT = 1.0 / 30.0
 _current_time = 0.0
 
@@ -318,6 +291,7 @@ def init():
     """타이틀에서 넘어올 때 한 번만 호출 – 게임 세계 초기화"""
     global stage, background, grass, boy, evil, portal, _current_time
     global health_bar_image, roll_bar_image, block_bar_image
+    global lose_image, win_image, game_result
 
     stage = 1
 
@@ -345,7 +319,14 @@ def init():
     roll_bar_image = load_image(os.path.join(base_dir, 'cave', 'roll_bar.png'))
     block_bar_image = load_image(os.path.join(base_dir, 'cave', 'block_bar.png'))
 
+    # 결과 화면 이미지 로드
+    lose_image = load_image(os.path.join(base_dir, 'cave', 'lose.png'))
+    win_image = load_image(os.path.join(base_dir, 'cave', 'win.png'))
+
+    # 시간 / 게임결과 초기화
     _current_time = time.time()
+    game_result = None
+
     print('play_mode init')
 
 
@@ -355,22 +336,28 @@ def finish():
 
 
 def handle_events():
-    global stage, background, grass, boy, evil, portal
+    global stage, background, grass, boy, evil, portal, game_result
 
     events = get_events()
     for e in events:
         if e.type == SDL_QUIT:
             game_framework.quit()
+            continue
 
-        elif e.type == SDL_KEYDOWN and e.key == SDLK_ESCAPE:
-            # ESC 누르면 타이틀 화면으로 복귀
+        # 결과 화면 상태라면: 아무 키나 누르면 게임 재시작
+        if game_result is not None:
+            if e.type == SDL_KEYDOWN:
+                init()
+            continue
+
+        if e.type == SDL_KEYDOWN and e.key == SDLK_ESCAPE:
             game_framework.change_mode(title_mode)
 
         elif e.type == SDL_KEYDOWN and e.key == SDLK_DOWN:
-            # 포탈 위에서 아래키 → 다음 스테이지
             if portal is not None:
                 if rects_intersect(boy.get_bb(), portal.get_bb()):
                     if stage == 1:
+                        # 1스테이지 → 2스테이지 전환
                         stage = 2
                         background = Stage2Background()
                         grass = CaveGround()
@@ -378,15 +365,11 @@ def handle_events():
                         portal = None
                         evil = EvilKnight()
 
-                        # Hero 위치 / 상태 리셋
                         boy.x = 120
                         reset_hero_for_stage(boy)
                         place_on_ground(boy, grass)
-
-                        # Evil 위치 세팅
                         place_on_ground(evil, grass)
 
-                        # Evil AI 연결
                         evil.target = boy
                         evil.stage = stage
                         evil.bg = background
@@ -394,14 +377,14 @@ def handle_events():
                         boy.state_machine.change_state(boy.IDLE)
                         boy.dir = 0
                         boy.vy = 0.0
-                    # stage == 2 인 상태에서의 추가 스테이지 진입은 없음 (2스테이지가 마지막)
+                    # 2스테이지 이후는 없음
         else:
             boy.handle_event(e)
 
 
 def update():
     """매 프레임 게임 로직"""
-    global background, grass, boy, evil, portal, _current_time, stage
+    global background, grass, boy, evil, portal, _current_time, stage, game_result
 
     # frame_time 계산
     now = time.time()
@@ -412,6 +395,10 @@ def update():
         dt = 0.0
     game_framework.frame_time = dt
     _current_time = now
+
+    # 결과 화면 상태면 더 이상 게임 로직 갱신 안 함
+    if game_result is not None:
+        return
 
     background.update()
     grass.update()
@@ -438,8 +425,19 @@ def update():
         # 종유석 충돌(데미지만) + Evil AI는 background.hazards를 직접 보고 회피
         background.handle_hazard_collision(boy, evil)
 
+    # ===== 승리 / 패배 판정 =====
+    if game_result is None:
+        if boy.hp <= 0:
+            # 2스테이지에서 동시에 서로 죽는 경우가 아니라면 패배 처리
+            if not (stage == 2 and evil.hp <= 0):
+                game_result = 'LOSE'
+        elif stage == 2 and evil.hp <= 0:
+            # 2스테이지 Evil 처치 = 게임 클리어
+            game_result = 'WIN'
+
 
 def draw():
+    global game_result, lose_image, win_image
     clear_canvas()
     background.draw()
     grass.draw()
@@ -450,6 +448,24 @@ def draw():
     boy.draw()
     evil.draw()
     draw_status_bars(boy, evil)
+
+    # 결과 화면 오버레이
+    if game_result is not None:
+        img = None
+        if game_result == 'LOSE':
+            img = lose_image
+        elif game_result == 'WIN':
+            img = win_image
+
+        if img is not None:
+            cw = get_canvas_width()
+            ch = get_canvas_height()
+            iw, ih = img.w, img.h
+            # 화면에 꽉 차게 (비율 유지)
+            scale = min(cw / iw, ch / ih)
+            draw_w = iw * scale
+            draw_h = ih * scale
+            img.draw(cw // 2, ch // 2, draw_w, draw_h)
 
     update_canvas()
 
