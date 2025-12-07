@@ -418,11 +418,11 @@ def update():
     boy.update()
     evil.update()
 
-    # Evil 사망 시 포탈 생성
-    if evil.hp <= 0 and portal is None:
+    # Evil 사망 시 포탈 생성 (★ 1스테이지에서만 생성)
+    if stage == 1 and evil.hp <= 0 and portal is None:
         portal_x = get_canvas_width() - 80
         portal_y_top = grass.top
-        portal = Portal(portal_x, portal_y_top)
+        portal = Portal(portal_x, portal_y_top, stage=stage)
 
     if portal is not None:
         portal.update()
