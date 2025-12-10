@@ -12,6 +12,14 @@ import os
 # 이 모듈은 실제 전투가 일어나는 플레이 모드를 담당하며
 # HeroKnight.Boy, EvilKnight.EvilKnight, 배경, 포탈, UI를 모두 조합한다.
 
+BASE = os.path.dirname(__file__)
+
+
+def cave_path(name):
+    # cave 폴더 안의 PNG 파일 경로를 구성하는 헬퍼 함수이다.
+    # 상태 바, 승패 이미지 등을 로드할 때 사용된다.
+    return os.path.join(BASE, 'cave', name)
+
 
 def resolve_ground(obj, ground):
     # 이 함수는 캐릭터의 바닥 충돌을 처리하며
@@ -19,20 +27,26 @@ def resolve_ground(obj, ground):
     ol, ob, or_, ot = obj.get_bb()
     gl, gb, gr, gt = ground.get_bb()
 
+    # 수평으로 아예 안 겹치면 무시
     if or_ < gl or gr < ol:
         return
 
+    # 아래에서 땅에 닿는 경우만 처리
     if ob < gt:
         dy = gt - ob
         obj.y += dy
         if hasattr(obj, 'vy'):
             obj.vy = 0.0
 
+        # 실제 바닥 y를 추적하는 필드가 있으면 갱신
+        if hasattr(obj, 'ground_y'):
+            obj.ground_y = obj.y
+
+        # 떨어지는 중이었다면 착지 상태로 전환
         if hasattr(obj, 'state_machine') and hasattr(obj, 'FALL'):
             cur = obj.state_machine.cur_state
-
             if cur == obj.FALL:
-                if obj.dir == 0:
+                if getattr(obj, 'dir', 0) == 0:
                     obj.state_machine.handle_state_event(('LANDED_IDLE', None))
                 else:
                     obj.state_machine.handle_state_event(('LANDED_RUN', None))
@@ -100,6 +114,8 @@ def place_on_ground(obj, ground):
     gl, gb, gr, gt = ground.get_bb()
     dy = gt - b
     obj.y += dy
+    if hasattr(obj, 'ground_y'):
+        obj.ground_y = obj.y
 
 
 def resolve_attack(attacker, defender):
@@ -131,6 +147,7 @@ def resolve_attack(attacker, defender):
     is_awakened_attacker = getattr(attacker, 'awakened', False)
     damage = 15 if is_awakened_attacker else 10
 
+    # 방어 중인 Boy가 공격을 막는 경우
     if isinstance(defender, Boy) and isinstance(defender.state_machine.cur_state, Block):
         front = False
         if hasattr(attacker, 'x'):
@@ -233,6 +250,7 @@ def draw_status_bars(boy, evil):
 
     cur_y = ch - top_margin
 
+    # Hero HP (슬롯 형태)
     draw_slot_bar(health_bar_image,
                   int(HP_SLOTS * boy.hp / boy.max_hp),
                   HP_SLOTS,
@@ -240,11 +258,13 @@ def draw_status_bars(boy, evil):
 
     cur_y -= target_h(health_bar_image) + line_margin
 
+    # 구르기 쿨타임 (비율 바)
     roll_ratio = 1.0 - min(boy.roll_cool / ROLL_COOLTIME, 1.0)
     draw_bar(roll_bar_image, roll_ratio, hero_x, cur_y)
 
     cur_y -= target_h(roll_bar_image) + line_margin
 
+    # 방어 게이지 (슬롯 형태)
     if hasattr(boy, 'guard_max'):
         guard_slots = int(HP_SLOTS * boy.guard_current / boy.guard_max)
     else:
@@ -254,6 +274,7 @@ def draw_status_bars(boy, evil):
                   HP_SLOTS,
                   hero_x, cur_y)
 
+    # Evil HP (슬롯 형태)
     enemy_hp_slots = int(HP_SLOTS * evil.hp / evil.max_hp)
     draw_slot_bar(health_bar_image,
                   enemy_hp_slots,
@@ -323,13 +344,12 @@ def init():
 
     portal = None
 
-    base_dir = os.path.dirname(__file__)
-    health_bar_image = load_image(os.path.join(base_dir, 'cave', 'health_bar.png'))
-    roll_bar_image = load_image(os.path.join(base_dir, 'cave', 'roll_bar.png'))
-    block_bar_image = load_image(os.path.join(base_dir, 'cave', 'block_bar.png'))
+    health_bar_image = load_image(cave_path('health_bar.png'))
+    roll_bar_image = load_image(cave_path('roll_bar.png'))
+    block_bar_image = load_image(cave_path('block_bar.png'))
 
-    lose_image = load_image(os.path.join(base_dir, 'cave', 'lose.png'))
-    win_image = load_image(os.path.join(base_dir, 'cave', 'win.png'))
+    lose_image = load_image(cave_path('lose.png'))
+    win_image = load_image(cave_path('win.png'))
 
     _current_time = time.time()
     game_result = None
@@ -351,6 +371,7 @@ def handle_events():
             game_framework.quit()
             continue
 
+        # 승패가 확정된 후에는 아무 키를 누르면 재시작
         if game_result is not None:
             if e.type == SDL_KEYDOWN:
                 init()
@@ -360,6 +381,7 @@ def handle_events():
             game_framework.change_mode(title_mode)
 
         elif e.type == SDL_KEYDOWN and e.key == SDLK_DOWN:
+            # 포탈 위에서 아래 방향키를 누르면 다음 스테이지로 이동
             if portal is not None:
                 if rects_intersect(boy.get_bb(), portal.get_bb()):
                     if stage == 1:
@@ -408,6 +430,7 @@ def update():
     boy.update()
     evil.update()
 
+    # 1스테이지에서 Evil을 죽이면 포탈 생성
     if stage == 1 and evil.hp <= 0 and portal is None:
         portal_x = get_canvas_width() - 80
         portal_y_top = grass.top
@@ -416,18 +439,23 @@ def update():
     if portal is not None:
         portal.update()
 
+    # 바닥 충돌 및 몸통 충돌 처리
     resolve_ground(boy, grass)
     resolve_ground(evil, grass)
     resolve_body_block(boy, evil)
 
+    # 공격 상호작용
     resolve_attack(boy, evil)
     resolve_attack(evil, boy)
 
+    # 2스테이지 종유석 Hazard 처리
     if stage == 2:
         background.handle_hazard_collision(boy, evil)
 
+    # 승패 판정: 양쪽 죽는 모션이 끝난 뒤에만 결과 확정
     if game_result is None:
         if boy.hp <= 0 and getattr(boy, 'death_done', False):
+            # 만약 2스테이지에서 서로 동시에 죽었다면 승리로 취급
             if not (stage == 2 and evil.hp <= 0):
                 game_result = 'LOSE'
         elif stage == 2 and evil.hp <= 0 and getattr(evil, 'death_done', False):
@@ -436,7 +464,7 @@ def update():
 
 def draw():
     # 이 함수는 배경, 바닥, 포탈, 캐릭터, 상태 바, 승패 이미지를 모두 그리며
-    # game_framework.run의 메인 루프에서 호출된다..
+    # game_framework.run의 메인 루프에서 호출된다.
     global game_result, lose_image, win_image
     clear_canvas()
     background.draw()
@@ -469,7 +497,7 @@ def draw():
 
 
 def pause():
-    # 이 함수는 모드 스택 일시 정지 시 호출된다
+    # 이 함수는 모드 스택 일시 정지 시 호출된다.
     pass
 
 

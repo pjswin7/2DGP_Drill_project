@@ -10,10 +10,9 @@ from state_machine import StateMachine
 BASE = os.path.dirname(__file__)
 
 
-def p(*names):
-    # 이 함수는 HeroKnight 스프라이트 폴더의 경로를 구성하며
-    # Boy 클래스에서 각 애니메이션 이미지를 로드할 때 사용된다.
-    return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
+def cave_path(name):
+    # cave 폴더 안의 PNG 파일 경로를 구성하는 헬퍼 함수이다.
+    return os.path.join(BASE, 'cave', name)
 
 
 PIXEL_PER_METER = (10.0 / 0.3)
@@ -23,7 +22,7 @@ RUN_SPEED_MPM = (RUN_SPEED_KMPH * 1000.0 / 60.0)
 RUN_SPEED_MPS = (RUN_SPEED_MPM / 60.0)
 RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
 
-ATTACK_DURATION = 0.45
+ATTACK_DURATION = 0.45   # 공격 1회 재생 시간(초)
 
 TIME_PER_ACTION = 0.5
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
@@ -165,6 +164,7 @@ class Jump:
         self.boy.vy -= GRAVITY_PPS2 * dt
         self.boy.y += self.boy.vy * dt
 
+        # 상승이 끝나고 속도가 0 이하가 되면 낙하 상태로 전환한다.
         if self.boy.vy <= 0:
             self.boy.state_machine.change_state(self.boy.FALL)
 
@@ -200,15 +200,6 @@ class Fall:
 
         self.boy.vy -= GRAVITY_PPS2 * dt
         self.boy.y += self.boy.vy * dt
-
-        ground_y = getattr(self.boy, 'ground_y', 70)
-        if self.boy.y <= ground_y:
-            self.boy.y = ground_y
-            self.boy.vy = 0.0
-            if self.boy.dir == 0:
-                self.boy.state_machine.change_state(self.boy.IDLE)
-            else:
-                self.boy.state_machine.change_state(self.boy.RUN)
 
     def draw(self):
         self.boy.draw_current_frame()
@@ -374,18 +365,19 @@ class Boy:
     # 이 클래스는 플레이어 캐릭터 전체 로직을 담당하며
     # play_mode.py에서 한 개 인스턴스로 사용된다.
     def __init__(self):
-        self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]
-        self.run_images = [load_image(p('HeroKnight', 'Run', f'HeroKnight_Run_{i}.png')) for i in range(10)]
-        self.roll_images = [load_image(p('HeroKnight', 'Roll', f'HeroKnight_Roll_{i}.png')) for i in range(9)]
-        self.attack1 = [load_image(p('HeroKnight', 'Attack1', f'HeroKnight_Attack1_{i}.png')) for i in range(6)]
-        self.attack2 = [load_image(p('HeroKnight', 'Attack2', f'HeroKnight_Attack2_{i}.png')) for i in range(6)]
-        self.block_idle_images = [load_image(p('HeroKnight', 'BlockIdle', f'HeroKnight_Block Idle_{i}.png')) for i in range(8)]
-        self.death_images = [load_image(p('HeroKnight', 'Death', f'HeroKnight_Death_{i}.png')) for i in range(10)]
+        # 스프라이트 이미지는 모두 cave 폴더에 평탄하게 들어 있다고 가정한다.
+        self.images = [load_image(cave_path(f'HeroKnight_Idle_{i}.png')) for i in range(8)]
+        self.run_images = [load_image(cave_path(f'HeroKnight_Run_{i}.png')) for i in range(10)]
+        self.roll_images = [load_image(cave_path(f'HeroKnight_Roll_{i}.png')) for i in range(9)]
+        self.attack1 = [load_image(cave_path(f'HeroKnight_Attack1_{i}.png')) for i in range(6)]
+        self.attack2 = [load_image(cave_path(f'HeroKnight_Attack2_{i}.png')) for i in range(6)]
+        self.block_idle_images = [load_image(cave_path(f'HeroKnight_Block Idle_{i}.png')) for i in range(8)]
+        self.death_images = [load_image(cave_path(f'HeroKnight_Death_{i}.png')) for i in range(10)]
 
         self.JUMP_LAST = 1
         self.FALL_LAST = 3
-        self.jump_images = [load_image(p('HeroKnight', 'Jump', f'HeroKnight_Jump_{i}.png')) for i in range(self.JUMP_LAST + 1)]
-        self.fall_images = [load_image(p('HeroKnight', 'Fall', f'HeroKnight_Fall_{i}.png')) for i in range(self.FALL_LAST + 1)]
+        self.jump_images = [load_image(cave_path(f'HeroKnight_Jump_{i}.png')) for i in range(self.JUMP_LAST + 1)]
+        self.fall_images = [load_image(cave_path(f'HeroKnight_Fall_{i}.png')) for i in range(self.FALL_LAST + 1)]
 
         self.frame = 0.0
         self.fps = 10
@@ -399,10 +391,6 @@ class Boy:
         self.dir = 0
         self.face_dir = 1
         self.left_bound, self.right_bound = 30, 770
-
-        self.jump_idx = 0
-        self.fall_idx = 0
-        self.anim_acc = 0.0
 
         self.ground_y = self.y
 
@@ -470,6 +458,9 @@ class Boy:
                 landed_idle: self.IDLE,
             },
             self.ROLL: {},
+            self.ATTACK: {},
+            self.BLOCK: {},
+            self.DIE: {},
         }
 
         self.state_machine = StateMachine(self.IDLE, self.rules)
@@ -479,22 +470,13 @@ class Boy:
         # 모든 상태의 draw()에서 공통으로 호출된다.
         fi = int(self.frame) % self.max_frames
         img = self.anim[fi]
-        try:
-            w, h = img.w, img.h
-            tw, th = int(w * self.scale), int(h * self.scale)
-        except:
-            tw = th = None
+        w, h = img.w, img.h
+        tw, th = int(w * self.scale), int(h * self.scale)
 
         if self.face_dir == 1:
-            if tw and th:
-                img.draw(self.x, self.y, tw, th)
-            else:
-                img.draw(self.x, self.y)
+            img.draw(self.x, self.y, tw, th)
         else:
-            if tw and th:
-                img.composite_draw(0, 'h', self.x, self.y, tw, th)
-            else:
-                img.composite_draw(0, 'h', self.x, self.y)
+            img.composite_draw(0, 'h', self.x, self.y, tw, th)
 
     def get_bb(self):
         # 이 메서드는 몸통 히트박스를 계산하며
@@ -523,7 +505,6 @@ class Boy:
     def get_attack_bb(self):
         # 이 메서드는 공격 중일 때만 검 사용 히트박스를 반환하며
         # play_mode.resolve_attack에서 사용된다.
-        from HeroKnight import Attack
         if not isinstance(self.state_machine.cur_state, Attack):
             return None
 
@@ -582,7 +563,7 @@ class Boy:
 
     def consume_guard(self, knockback_dir, use_all=False):
         # 이 메서드는 방어 게이지를 소비하고 가드 넉백을 적용하며
-        # play_mode.resolve_attack에서 공격자가 맞을 때 호출된다.
+        # play_mode.resolve_attack에서 호출된다.
         if self.guard_current <= 0:
             return False
 
@@ -678,7 +659,7 @@ class Boy:
 
     def update(self):
         # 이 메서드는 한 프레임 동안의 피격, 넉백, 각성, 가드 회복, 상태 머신 로직을 처리하며
-        # play_mode.update에서 매 프레임 호출된다..
+        # play_mode.update에서 매 프레임 호출된다.
         dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT

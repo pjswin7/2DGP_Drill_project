@@ -9,10 +9,9 @@ from state_machine import StateMachine
 BASE = os.path.dirname(__file__)
 
 
-def p(*names):
-    # 이 함수는 EvilKnight 스프라이트 폴더 경로를 구성하며
-    # EvilKnight 클래스에서 애니메이션 시트 파일을 로드할 때 사용된다.
-    return os.path.join(BASE, '120x80_PNGSheets', *names)
+def cave_path(name):
+    # cave 폴더 안의 PNG 파일 경로를 구성하는 헬퍼 함수이다.
+    return os.path.join(BASE, 'cave', name)
 
 
 FRAME_W = 120
@@ -55,13 +54,15 @@ EVIL_EVADE_JUMP_PROB = 0.25
 EVIL_EVADE_ROLL_PROB = 0.5
 
 
-# 아래 이벤트 판정 함수들은 EvilKnight의 낙하 착지 전이에서 사용되며
-# play_mode.resolve_ground가 LANDED_* 이벤트를 보낼 때 쓰인다.
 def landed_run(e):
+    # 이 함수는 낙하 후 착지하여 달리기 상태로 전이해야 할 때
+    # play_mode.resolve_ground에서 발생시키는 이벤트 판정에 사용된다.
     return e[0] == 'LANDED_RUN'
 
 
 def landed_idle(e):
+    # 이 함수는 낙하 후 착지하여 대기 상태로 전이해야 할 때
+    # play_mode.resolve_ground에서 발생시키는 이벤트 판정에 사용된다.
     return e[0] == 'LANDED_IDLE'
 
 
@@ -330,14 +331,14 @@ class EvilKnight:
     # 이 클래스는 적의 전체 로직과 AI를 담당하며
     # play_mode.py에서 HeroKnight.Boy와 싸우게 된다.
     def __init__(self):
-        self.idle_sheet = load_image(p('_Idle.png'))
-        self.run_sheet = load_image(p('_Run.png'))
-        self.roll_sheet = load_image(p('_Roll.png'))
-        self.jump_sheet = load_image(p('_Jump.png'))
-        self.fall_sheet = load_image(p('_JumpFallInbetween.png'))
-        self.attack1_sheet = load_image(p('_Attack.png'))
-        self.attack2_sheet = load_image(p('_Attack2.png'))
-        self.dead_sheet = load_image(p('_Death.png'))
+        self.idle_sheet = load_image(cave_path('_Idle.png'))
+        self.run_sheet = load_image(cave_path('_Run.png'))
+        self.roll_sheet = load_image(cave_path('_Roll.png'))
+        self.jump_sheet = load_image(cave_path('_Jump.png'))
+        self.fall_sheet = load_image(cave_path('_JumpFallInbetween.png'))
+        self.attack1_sheet = load_image(cave_path('_Attack.png'))
+        self.attack2_sheet = load_image(cave_path('_Attack2.png'))
+        self.dead_sheet = load_image(cave_path('_Death.png'))
 
         self.frame_w = FRAME_W
         self.frame_h = FRAME_H
@@ -465,7 +466,6 @@ class EvilKnight:
     def get_attack_bb(self):
         # 이 메서드는 공격 중일 때만 검 히트박스를 반환하며
         # play_mode.resolve_attack에서 사용된다.
-        from EvilKnight import Attack
         if not isinstance(self.state_machine.cur_state, Attack):
             return None
 
@@ -526,7 +526,7 @@ class EvilKnight:
 
     def _find_stalactite_danger(self):
         # 이 내부 메서드는 2스테이지에서 머리 위에 떨어지는 종유석이 있는지 확인하여
-        # AI가 회피 행동을 결정할 때 사용한다.
+        # AI가 회피 행동을 결정할 때 사용된다.
         if self.stage != 2:
             return None
         if self.bg is None or not hasattr(self.bg, 'hazards'):
@@ -712,7 +712,7 @@ class EvilKnight:
 
     def draw(self):
         # 이 메서드는 피격 깜빡임 효과를 적용한 뒤
-        # 현재 상태의 스프라이트를 그린다..
+        # 현재 상태의 스프라이트를 그린다.
         visible = True
         if self.hit_timer > 0.0:
             elapsed = HIT_EFFECT_DURATION - self.hit_timer

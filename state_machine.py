@@ -7,30 +7,35 @@ class StateMachine:
         # rules: {state: {event_predicate: next_state}} 형태의 전이 테이블
         self.cur_state = start_state
         self.rules = rules
+        # 시작 시점에 초기 진입 이벤트를 한 번 보낸다.
+        self.cur_state.enter(('INIT', None))
 
     def handle_state_event(self, state_event):
         # 이 메서드는 외부 입력/이벤트를 받아 적절한 상태로 전이하며
-        # HeroKnight.Boy.handle_event, play_mode.resolve_ground 등에서 호출된다..
+        # HeroKnight.Boy.handle_event, play_mode.resolve_ground 등에서 호출된다.
         if self.cur_state not in self.rules:
             return
 
-        for check_event in self.rules[self.cur_state].keys():
-            if check_event(state_event):
-                next_state = self.rules[self.cur_state][check_event]
-                prev_state = self.cur_state
-                prev_state.exit(state_event)
-                self.cur_state = next_state
-                self.cur_state.enter(state_event)
-                return
+        transitions = self.rules[self.cur_state]
+        for predicate, next_state in transitions.items():
+            try:
+                if predicate(state_event):
+                    self.cur_state.exit(state_event)
+                    self.cur_state = next_state
+                    self.cur_state.enter(state_event)
+                    return
+            except Exception:
+                # 이벤트 판정에서 에러가 나더라도 게임이 죽지 않도록 방어
+                continue
 
     def update(self):
         # 이 메서드는 현재 상태의 do()를 호출하며
-        # HeroKnight.Boy.update, EvilKnight.EvilKnight.update에서 사용된다.
+        # Boy.update, EvilKnight.update에서 사용된다.
         self.cur_state.do()
 
     def draw(self):
         # 이 메서드는 현재 상태의 draw()를 호출하며
-        # HeroKnight.Boy.draw, EvilKnight.EvilKnight.draw에서 사용된다.
+        # Boy.draw, EvilKnight.draw에서 사용된다.
         self.cur_state.draw()
 
     def change_state(self, new_state):
