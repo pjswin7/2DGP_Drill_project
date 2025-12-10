@@ -48,16 +48,15 @@ SUPER_SPEED_SCALE = 1.3
 SUPER_SCALE_FACTOR = 1.4  # 캐릭터 크기 배율
 
 # ==== Evil AI 관련 상수 ====
-EVIL_ATTACK_COOL_BASE = 1.2          # 일반 상태 공격 쿨 (초)
-EVIL_ATTACK_COOL_AWAKENED = 0.7      # 각성 상태 공격 쿨 (초)
-EVIL_ROLL_COOL = 2.0                 # 구르기 쿨타임
-EVIL_MAX_COMBO = 3                   # 몇 번 공격 후 회피 모드로 갈지
-EVIL_EVADE_TIME = 0.8                # 회피 모드 유지 시간
-EVIL_EVADE_JUMP_PROB = 0.25          # 쿨 중에 점프로 피할 확률
-EVIL_EVADE_ROLL_PROB = 0.5           # 쿨 중에 구르기로 피할 확률
+EVIL_ATTACK_COOL_BASE = 1.2
+EVIL_ATTACK_COOL_AWAKENED = 0.7
+EVIL_ROLL_COOL = 2.0
+EVIL_MAX_COMBO = 3
+EVIL_EVADE_TIME = 0.8
+EVIL_EVADE_JUMP_PROB = 0.25
+EVIL_EVADE_ROLL_PROB = 0.5
 
 
-# Boy 쪽 resolve_ground가 쓰는 착지 이벤트와 맞추기
 def landed_run(e):
     return e[0] == 'LANDED_RUN'
 
@@ -134,9 +133,7 @@ class Roll:
         self.knight.max_frames = self.knight.roll_frames
         self.knight.frame = 0.0
         self.elapsed = 0.0
-        # 구르기 방향: 현재 dir이 있으면 그 방향, 없으면 보고 있는 방향
         self.move_dir = self.knight.dir if self.knight.dir != 0 else self.knight.face_dir
-        # 모션 방향과 이동 방향이 같도록
         if self.move_dir != 0:
             self.knight.face_dir = self.move_dir
 
@@ -159,7 +156,6 @@ class Roll:
                             min(self.knight.x, self.knight.right_bound))
 
         if self.elapsed >= ROLL_DURATION:
-            # 구르기 끝나면 다시 전투 판단을 위해 IDLE로
             self.knight.state_machine.change_state(self.knight.IDLE)
 
     def draw(self):
@@ -175,7 +171,6 @@ class Attack:
     def enter(self, e):
         import random
 
-        # AI가 다음 공격타입을 미리 정해놓았다면 우선 사용
         if self.knight.next_attack_type in (1, 2):
             pick = self.knight.next_attack_type
             self.knight.next_attack_type = 0
@@ -192,11 +187,9 @@ class Attack:
         self.knight.frame = 0.0
         self.knight.prev_time = get_time()
 
-        # 공격 중에는 제자리에서 휘두르도록
         self.saved_dir = self.knight.dir
         self.knight.dir = 0
 
-        # 한 번만 맞도록 플래그 초기화
         self.knight.did_hit = False
 
         self.fps = self.knight.max_frames / ATTACK_DURATION
@@ -216,7 +209,6 @@ class Attack:
         self.knight.frame += self.fps * dt
 
         if self.knight.frame >= self.knight.max_frames:
-            # 공격 끝나면 다시 전투 판단을 위해 IDLE/ RUN 으로 돌아감
             if self.knight.dir == 0:
                 self.knight.state_machine.change_state(self.knight.IDLE)
             else:
@@ -284,10 +276,6 @@ class Fall:
         self.knight.vy -= GRAVITY_PPS2 * dt
         self.knight.y += self.knight.vy * dt
 
-        # 실제 착지는 play_mode.resolve_ground 에서
-        # LANDED_IDLE / LANDED_RUN 이벤트로 처리한다.
-        # 여기서는 추가 처리 없음.
-
     def draw(self):
         self.knight.draw_current_frame()
 
@@ -349,12 +337,10 @@ class EvilKnight:
         self.max_frames = self.idle_frames
         self.frame = 0.0
 
-        # 바디 히트박스 비율
         self.body_w_ratio = 0.20
         self.body_h_ratio = 0.50
         self.bb_y_offset_ratio = 0.25
 
-        # 기본 크기와 현재 크기
         self.base_scale = 2.0
         self.scale = self.base_scale
 
@@ -371,33 +357,26 @@ class EvilKnight:
         self.hp = self.max_hp
         self.did_hit = False
 
-        # 피격 효과
         self.hit_timer = 0.0
         self.knockback_timer = 0.0
         self.knockback_dir = 0
 
-        # 각성 상태
         self.awakened = False
         self.speed_scale = 1.0
 
-        # 공격/구르기 쿨타임
         self.attack_cool = 0.0
         self.roll_cool = 0.0
 
-        # 콤보/회피 관련
         self.combo_count = 0
         self.evade_timer = 0.0
         self.evade_dir = 0
 
-        # AI가 사용할 다음 공격 타입(1,2) – 0이면 랜덤
         self.next_attack_type = 0
 
-        # AI가 참조할 대상 (Hero), 스테이지, 배경
         self.target = None
         self.stage = 1
         self.bg = None
 
-        # 상태 객체
         self.IDLE = Idle(self)
         self.RUN = Run(self)
         self.ROLL = Roll(self)
@@ -406,7 +385,6 @@ class EvilKnight:
         self.FALL = Fall(self)
         self.DIE = Die(self)
 
-        # 착지 이벤트 처리 추가
         self.rules = {
             self.IDLE: {},
             self.RUN: {},
@@ -420,8 +398,6 @@ class EvilKnight:
             self.DIE: {},
         }
         self.state_machine = StateMachine(self.IDLE, self.rules)
-
-    # ---------------- 히트박스 계산 ----------------
 
     def draw_current_frame(self):
         fi = int(self.frame) % self.max_frames
@@ -486,8 +462,6 @@ class EvilKnight:
         top = cy + half_h
         return left, bottom, right, top
 
-    # ---------------- 피격/각성 ----------------
-
     def start_hit_effect(self, knockback_dir=None):
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
@@ -506,29 +480,17 @@ class EvilKnight:
         self.hp = max(0, self.hp - amount)
         self.start_hit_effect(knockback_dir)
 
-    # 각성 발동
     def super_power(self):
         if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
             self.awakened = True
             self.speed_scale = SUPER_SPEED_SCALE
-            # 각성 시 캐릭터 전체 크기 1.4배
             self.scale = self.base_scale * SUPER_SCALE_FACTOR
 
-    # ---------------- AI 보조 함수 ----------------
-
     def is_on_ground(self):
-        """
-        정확한 y값 대신,
-        vy == 0 이고 점프/낙하 상태가 아닐 때 '바닥에 있다'고 본다.
-        """
         return (self.vy == 0.0
                 and self.state_machine.cur_state not in (self.JUMP, self.FALL))
 
     def _find_stalactite_danger(self):
-        """
-        2스테이지에서 종유석이 바로 머리 위에 떨어질 위험이 있는지 검사.
-        위험하면 그 종유석의 x와 피해야 하는 방향(+1/-1)을 돌려줌.
-        """
         if self.stage != 2:
             return None
         if self.bg is None or not hasattr(self.bg, 'hazards'):
@@ -539,25 +501,13 @@ class EvilKnight:
         for s in stones:
             if not getattr(s, 'active', False):
                 continue
-            # Evil의 바로 위 근처에 있고, 아직 어느 정도 위에 떠 있으면 위험으로 본다
             if abs(s.x - self.x) < 40 and s.y > self.y + 40:
-                # 종유석 기준으로 한 칸 옆으로 피하도록 방향 선택
                 side_dir = 1 if s.x <= self.x else -1
                 return s.x, side_dir
 
         return None
 
     def ai_update(self):
-        """
-        전투 AI:
-        1) 2스테이지에서는 머리 위 종유석이 위험하면 먼저 피하고 (가능하면 구르기로)
-        2) 일정 거리에서는 Hero를 쫓아가고
-        3) 가까워지면 공격
-        4) 공격 후에는 쿨 동안 도망 / 구르기 / 점프로 회피
-        5) 몇 번 이상 공격했다 싶으면 일정 시간 회피 모드(EVADE) 유지
-        """
-
-        # 죽었거나 쓰러지는 중에는 AI 동작 안 함
         if self.hp <= 0:
             return
         cur = self.state_machine.cur_state
@@ -566,7 +516,6 @@ class EvilKnight:
 
         target = self.target
         if target is None or getattr(target, 'hp', 0) <= 0:
-            # 상대가 없으면 그냥 가만히
             if cur is not self.IDLE:
                 self.dir = 0
                 self.state_machine.change_state(self.IDLE)
@@ -576,28 +525,24 @@ class EvilKnight:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 쿨타임 감소
         if self.attack_cool > 0.0:
             self.attack_cool = max(0.0, self.attack_cool - dt)
         if self.roll_cool > 0.0:
             self.roll_cool = max(0.0, self.roll_cool - dt)
 
-        # Hero 위치 기준 기본 정보
         dx = target.x - self.x
         dist = abs(dx)
 
         base_attack_cool = EVIL_ATTACK_COOL_AWAKENED if self.awakened else EVIL_ATTACK_COOL_BASE
 
-        # ===== 0. 종유석 위험 먼저 처리 (2스테이지) =====
         danger = self._find_stalactite_danger()
         if danger is not None and self.is_on_ground():
             import random
             stone_x, side_dir = danger
 
-            # 종유석은 기본적으로 구르기로 피하려고 함
             if self.roll_cool <= 0.0 and random.random() < 0.7:
                 self.dir = side_dir
-                self.face_dir = side_dir   # 모션 방향과 이동 방향 일치
+                self.face_dir = side_dir
                 self.evade_dir = side_dir
                 self.roll_cool = EVIL_ROLL_COOL
                 self.state_machine.change_state(self.ROLL)
@@ -608,15 +553,12 @@ class EvilKnight:
                     self.state_machine.change_state(self.RUN)
             return
 
-        # ===== 1. 회피 모드(EVADE) 우선 =====
         if self.evade_timer > 0.0:
             import random
             self.evade_timer = max(0.0, self.evade_timer - dt)
 
-            # 회피 방향은 미리 정해둔 방향, 없으면 Hero 반대
             move_dir = self.evade_dir if self.evade_dir != 0 else (-1 if dx > 0 else 1)
 
-            # 가끔 구르기로 더 멀리 도망
             if self.is_on_ground() and self.roll_cool <= 0.0 and random.random() < EVIL_EVADE_ROLL_PROB:
                 self.dir = move_dir
                 self.face_dir = move_dir
@@ -624,27 +566,22 @@ class EvilKnight:
                 self.state_machine.change_state(self.ROLL)
                 return
 
-            # 아니면 그냥 뛰어서 도망
             self.dir = move_dir
             self.face_dir = move_dir
             if cur is not self.RUN:
                 self.state_machine.change_state(self.RUN)
             return
 
-        # ===== 2. 기본 전투 파라미터 =====
-        attack_range = 110.0   # 이 안이면 공격
-        chase_range = 450.0    # 이 안이면 쫓아감
+        attack_range = 110.0
+        chase_range = 450.0
 
-        # ===== 3. 근접 상태 (공격/회피) =====
         if dist <= attack_range and self.is_on_ground():
             import random
 
-            # 공격/회피 전에는 항상 Hero 쪽을 바라보게
             if dist > 1.0:
                 self.face_dir = 1 if dx > 0 else -1
 
             if self.attack_cool <= 0.0:
-                # 공격 가능: 1 또는 2타 중 선택
                 if self.awakened and random.random() < 0.4:
                     self.next_attack_type = 2
                 else:
@@ -655,7 +592,6 @@ class EvilKnight:
                 self.dir = 0
                 self.combo_count += 1
 
-                # 일정 횟수 이상 공격하면 회피 모드 진입
                 if self.combo_count >= EVIL_MAX_COMBO:
                     self.combo_count = 0
                     self.evade_timer = EVIL_EVADE_TIME
@@ -663,10 +599,8 @@ class EvilKnight:
                 return
 
             else:
-                # 공격 쿨이 도는 동안에는 피하는 행동 수행
                 r = random.random()
 
-                # 1) 우선 구르기로 뒤로 빠질 확률
                 if self.roll_cool <= 0.0 and self.is_on_ground() and r < EVIL_EVADE_ROLL_PROB:
                     move_dir = -self.face_dir
                     self.dir = move_dir
@@ -676,12 +610,10 @@ class EvilKnight:
                     self.state_machine.change_state(self.ROLL)
                     return
 
-                # 2) 그 다음은 점프로 피하기
                 if self.is_on_ground() and r < EVIL_EVADE_ROLL_PROB + EVIL_EVADE_JUMP_PROB:
                     self.state_machine.change_state(self.JUMP)
                     return
 
-                # 3) 나머지는 그냥 뒤로 걸어서 거리 벌리기
                 move_dir = -self.face_dir
                 self.dir = move_dir
                 self.face_dir = move_dir
@@ -689,7 +621,6 @@ class EvilKnight:
                     self.state_machine.change_state(self.RUN)
                 return
 
-        # ===== 4. 중거리: 추격 =====
         if dist <= chase_range:
             move_dir = 1 if dx > 0 else -1
             self.dir = move_dir
@@ -698,15 +629,11 @@ class EvilKnight:
                 self.state_machine.change_state(self.RUN)
             return
 
-        # ===== 5. 너무 멀면 그냥 서 있기 =====
         self.dir = 0
         if cur is not self.IDLE:
             self.state_machine.change_state(self.IDLE)
 
-    # ---------------- 기본 루프 ----------------
-
     def handle_event(self, e):
-        # Evil은 플레이어 입력을 받지 않음 (AI 전용)
         pass
 
     def update(self):
@@ -714,7 +641,6 @@ class EvilKnight:
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 피격/넉백
         if self.hit_timer > 0.0:
             self.hit_timer = max(0.0, self.hit_timer - dt)
         if self.knockback_timer > 0.0:
@@ -722,7 +648,6 @@ class EvilKnight:
             self.x += self.knockback_dir * HIT_KNOCKBACK_SPEED_PPS * dt
             self.x = max(self.left_bound, min(self.x, self.right_bound))
 
-        # 이미 죽었으면 죽는 애니메이션만 재생
         if self.hp <= 0:
             if self.state_machine.cur_state is not self.DIE:
                 self.dir = 0
@@ -731,19 +656,15 @@ class EvilKnight:
             self.state_machine.update()
             return
 
-        # 각성 체크
         self.super_power()
 
-        # 공격/구르기 쿨타임 감소 (ai_update 에서도 한 번 더 감소하지만 둘 다 max로 클램프)
         if self.attack_cool > 0.0:
             self.attack_cool = max(0.0, self.attack_cool - dt)
         if self.roll_cool > 0.0:
             self.roll_cool = max(0.0, self.roll_cool - dt)
 
-        # AI 판단
         self.ai_update()
 
-        # 현재 상태 동작
         self.state_machine.update()
 
     def draw(self):
@@ -754,10 +675,8 @@ class EvilKnight:
                 visible = False
 
         if visible:
-            # 오라 없이 캐릭터만 그림
             self.state_machine.draw()
 
-        # 디버그용 히트박스
         left, bottom, right, top = self.get_bb()
         draw_rectangle(left, bottom, right, top)
 

@@ -1,7 +1,7 @@
 from pico2d import *
 import os
-import game_framework
 
+import game_framework
 from state_machine import StateMachine
 
 BASE = os.path.dirname(__file__)
@@ -30,26 +30,22 @@ FRAMES_PER_ACTION = 8
 
 ROLL_SPEED_PPS = RUN_SPEED_PPS * 2.0
 ROLL_DURATION = 0.45
-ROLL_COOLTIME = 10.0  # 구르기만 10초 쿨타임
+ROLL_COOLTIME = 10.0  # 구르기 10초 쿨타임
 
 GRAVITY_PPS2 = 1200.0
 JUMP_SPEED_PPS = 560.0
 
-# dt 스파이크 상한 (초)
 MAX_DT = 1.0 / 30.0
 
-# 피격 관련 상수
-HIT_EFFECT_DURATION = 2.0        # 2초 동안 깜빡
-HIT_KNOCKBACK_DURATION = 0.2     # 0.2초 동안 넉백
-HIT_KNOCKBACK_SPEED_PPS = 250.0  # 넉백 속도
+HIT_EFFECT_DURATION = 2.0
+HIT_KNOCKBACK_DURATION = 0.2
+HIT_KNOCKBACK_SPEED_PPS = 250.0
 
-# 방어 성공 시 넉백 속도(조금만 밀리도록)
 BLOCK_KNOCKBACK_SPEED_PPS = 100.0
 
-# 각성 관련 상수
-SUPER_THRESHOLD_HP = 50          # HP 50 미만에서 각성
-SUPER_SPEED_SCALE = 1.3          # 이동 속도 배율
-SUPER_SCALE_FACTOR = 1.4         # 캐릭터 크기 배율
+SUPER_THRESHOLD_HP = 50
+SUPER_SPEED_SCALE = 1.3
+SUPER_SCALE_FACTOR = 1.4
 
 
 def right_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_RIGHT
@@ -247,6 +243,12 @@ class Roll:
 class Attack:
     def __init__(self, boy):
         self.boy = boy
+        self.pick = 1
+        self.fps = 0.0
+        # 공격 끝난 뒤 움직일 방향(입력 큐)
+        self.desired_dir = 0
+        # 공격 끝나자마자 방어로 이어질지 여부
+        self.queued_block = False
 
     def enter(self, e):
         import random
@@ -254,7 +256,11 @@ class Attack:
         self.boy.frame = 0
         self.boy.prev_time = get_time()
 
-        self.saved_dir = self.boy.dir
+        # 현재 이동 방향을 기반으로 공격 후 방향 설정
+        self.desired_dir = self.boy.dir
+        self.queued_block = False
+
+        # 공격 중에는 실제 이동은 0으로 고정
         self.boy.dir = 0
 
         self.boy.did_hit = False
@@ -264,18 +270,29 @@ class Attack:
         self.fps = self.boy.max_frames / ATTACK_DURATION
 
     def exit(self, e):
-        self.boy.dir = self.saved_dir
+        # dir 복원은 do()에서 이미 원하는 방향으로 세팅하므로 여기서는 아무 것도 안 함
+        pass
 
     def do(self):
         now = get_time()
         dt = min(now - self.boy.prev_time, MAX_DT)
+        if dt < 0.0:
+            dt = 0.0
         self.boy.prev_time = now
         self.boy.frame += self.fps * dt
+
         if self.boy.frame >= self.boy.max_frames:
-            if self.boy.dir == 0:
-                self.boy.state_machine.change_state(self.boy.IDLE)
+            # 공격이 끝난 시점에, 공격 도중 입력으로 정해둔 방향으로 이동 시작
+            self.boy.dir = self.desired_dir
+
+            # 방어가 큐에 들어있으면 바로 BLOCK 상태로 전환
+            if self.queued_block:
+                self.boy.state_machine.change_state(self.boy.BLOCK)
             else:
-                self.boy.state_machine.change_state(self.boy.RUN)
+                if self.boy.dir == 0:
+                    self.boy.state_machine.change_state(self.boy.IDLE)
+                else:
+                    self.boy.state_machine.change_state(self.boy.RUN)
 
     def draw(self):
         self.boy.draw_current_frame()
@@ -358,7 +375,6 @@ class Boy:
         self.frame = 0.0
         self.fps = 10
 
-        # 기본 크기와 현재 크기
         self.base_scale = 2.0
         self.scale = self.base_scale
 
@@ -388,19 +404,16 @@ class Boy:
         self.hp = self.max_hp
         self.did_hit = False
 
-        # 피격 효과 + 넉백
         self.hit_timer = 0.0
         self.knockback_timer = 0.0
         self.knockback_dir = 0
         self.knockback_speed = HIT_KNOCKBACK_SPEED_PPS
 
-        # 방어 게이지 (그림에 맞게 4칸)
         self.guard_max = 4
         self.guard_current = self.guard_max
-        self.guard_recharge_delay = 3.0  # 3초마다 1칸 회복
+        self.guard_recharge_delay = 3.0
         self.guard_recharge_timer = 0.0
 
-        # 각성 상태
         self.awakened = False
         self.speed_scale = 1.0
 
@@ -510,7 +523,6 @@ class Boy:
         top = cy + half_h
         return left, bottom, right, top
 
-    # 일반 피격
     def start_hit_effect(self, knockback_dir=None):
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
@@ -530,7 +542,6 @@ class Boy:
         self.hp = max(0, self.hp - amount)
         self.start_hit_effect(knockback_dir)
 
-    # 방어 성공 시(깜빡임 없이 약한 넉백)
     def start_block_knockback(self, knockback_dir):
         if knockback_dir is None:
             knockback_dir = -self.face_dir
@@ -551,44 +562,43 @@ class Boy:
         self.start_block_knockback(knockback_dir)
         return True
 
-    # 각성 발동
     def super_power(self):
         if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
             self.awakened = True
             self.speed_scale = SUPER_SPEED_SCALE
-            # 각성 시 캐릭터 전체 크기 1.4배
             self.scale = self.base_scale * SUPER_SCALE_FACTOR
 
     def handle_event(self, e):
         if self.hp <= 0:
             return
 
-        self.state_machine.handle_state_event(('INPUT', e))
+        cur_state = self.state_machine.cur_state
 
-        if e.type == SDL_KEYDOWN:
-            if e.key == SDLK_RIGHT:
-                self.dir = 1
-                self.face_dir = 1
-            elif e.key == SDLK_LEFT:
-                self.dir = -1
-                self.face_dir = -1
-            elif e.key == SDLK_SPACE:
-                if (self.state_machine.cur_state not in (self.JUMP, self.FALL, self.ROLL)
-                        and self.roll_cool <= 0.0):
-                    self.state_machine.change_state(self.ROLL)
-                    self.roll_cool = ROLL_COOLTIME
-        if e.type == SDL_KEYUP:
-            if e.key == SDLK_RIGHT and self.dir == 1:
-                self.dir = 0
-            if e.key == SDLK_LEFT and self.dir == -1:
-                self.dir = 0
+        # --- 어디서든 구르기 입력 (SPACE) 처리 ---
+        if e.type == SDL_KEYDOWN and e.key == SDLK_SPACE:
+            if (cur_state not in (self.JUMP, self.FALL, self.ROLL)
+                    and self.roll_cool <= 0.0):
+                self.state_machine.change_state(self.ROLL)
+                self.roll_cool = ROLL_COOLTIME
+                return
 
-        if isinstance(self.state_machine.cur_state, Attack):
-            self.state_machine.handle_state_event(('INPUT', e))
+        # --- 공격 중일 때 : 방향 전환 + 방어 큐만 처리 ---
+        if isinstance(cur_state, Attack):
+            if e.type == SDL_KEYDOWN:
+                if e.key == SDLK_RIGHT:
+                    self.face_dir = 1
+                    cur_state.desired_dir = 1
+                elif e.key == SDLK_LEFT:
+                    self.face_dir = -1
+                    cur_state.desired_dir = -1
+                elif e.key == SDLK_s:
+                    # 공격이 끝나면 바로 방어 상태로 넘어가도록 표시
+                    cur_state.queued_block = True
+            # 공격 중에는 다른 상태 전이 없음
             return
 
-        if isinstance(self.state_machine.cur_state, Block):
-
+        # --- 방어 상태일 때 전용 입력 처리 ---
+        if isinstance(cur_state, Block):
             if e.type == SDL_KEYDOWN:
                 if e.key == SDLK_RIGHT:
                     self.dir = 1
@@ -606,8 +616,7 @@ class Boy:
                     self.state_machine.change_state(next_state)
             return
 
-        self.state_machine.handle_state_event(('INPUT', e))
-
+        # --- 나머지 상태(Idle, Run, Jump, Fall, Roll)에서 방향키 처리 ---
         if e.type == SDL_KEYDOWN:
             if e.key == SDLK_RIGHT:
                 self.dir = 1
@@ -615,23 +624,20 @@ class Boy:
             elif e.key == SDLK_LEFT:
                 self.dir = -1
                 self.face_dir = -1
-            elif e.key == SDLK_SPACE:
-                if (self.state_machine.cur_state not in (self.JUMP, self.FALL, self.ROLL)
-                        and self.roll_cool <= 0.0):
-                    self.state_machine.change_state(self.ROLL)
-                    self.roll_cool = ROLL_COOLTIME
-        if e.type == SDL_KEYUP:
+        elif e.type == SDL_KEYUP:
             if e.key == SDLK_RIGHT and self.dir == 1:
                 self.dir = 0
-            if e.key == SDLK_LEFT and self.dir == -1:
+            elif e.key == SDLK_LEFT and self.dir == -1:
                 self.dir = 0
+
+        # 상태 머신에 입력 이벤트 전달(점프, 공격, 방어 전이 등은 rules로 처리)
+        self.state_machine.handle_state_event(('INPUT', e))
 
     def update(self):
         dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT
 
-        # 피격/넉백 처리
         if self.hit_timer > 0.0:
             self.hit_timer = max(0.0, self.hit_timer - dt)
         if self.knockback_timer > 0.0:
@@ -649,10 +655,8 @@ class Boy:
             self.state_machine.update()
             return
 
-        # 각성 상태 체크
         self.super_power()
 
-        # 방어 게이지 회복
         if self.guard_current < self.guard_max:
             self.guard_recharge_timer += dt
             if self.guard_recharge_timer >= self.guard_recharge_delay:
@@ -676,7 +680,6 @@ class Boy:
                 visible = False
 
         if visible:
-            # 오라 없이 캐릭터만 그림
             self.state_machine.draw()
 
         left, bottom, right, top = self.get_bb()
