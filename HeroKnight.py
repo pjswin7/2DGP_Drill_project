@@ -678,9 +678,3 @@ class Boy:
 
         if visible:
             self.state_machine.draw()
-
-        left, bottom, right, top = self.get_bb()
-        draw_rectangle(left, bottom, right, top)
-        atk_bb = self.get_attack_bb()
-        if atk_bb is not None:
-            draw_rectangle(atk_bb[0], atk_bb[1], atk_bb[2], atk_bb[3])

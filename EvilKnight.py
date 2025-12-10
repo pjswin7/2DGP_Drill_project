@@ -682,12 +682,5 @@ class EvilKnight:
         if visible:
             self.state_machine.draw()
 
-        left, bottom, right, top = self.get_bb()
-        draw_rectangle(left, bottom, right, top)
-
-        atk_bb = self.get_attack_bb()
-        if atk_bb is not None:
-            draw_rectangle(*atk_bb)
-
     def start_attack(self):
         self.state_machine.change_state(self.ATTACK)
