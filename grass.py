@@ -1,10 +1,10 @@
+# grass.py
 from pico2d import *
 import os
 
 BASE = os.path.dirname(__file__)
 
 GROUND_TOP_Y = 90
-
 CAVE_GROUND_DROP = 20
 
 
@@ -39,8 +39,7 @@ class Grass:
             self.tile.draw(x, y)
             x += w
 
-        left, bottom, right, top = self.get_bb()
-        draw_rectangle(left, bottom, right, top)
+
 
 
 class CaveGround:
@@ -80,5 +79,3 @@ class CaveGround:
             self.tile.draw(x, y)
             x += w
 
-        left, bottom, right, top = self.get_bb()
-        draw_rectangle(left, bottom, right, top)
