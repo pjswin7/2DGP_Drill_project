@@ -1,7 +1,7 @@
 import time
 
 # 이 모듈은 게임 루프와 모드 전환을 담당하며
-# main.py, title_mode.py, play_mode.py에서 공통으로 사용된다.
+# main.py, title_mode.py, play_mode.py에서 공통으로 사용된다..
 
 frame_time = 0.0
 

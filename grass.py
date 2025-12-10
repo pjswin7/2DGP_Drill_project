@@ -2,7 +2,7 @@ from pico2d import *
 import os
 
 # 이 모듈은 스테이지의 바닥 타일을 그리며
-# play_mode.py에서 충돌 처리와 함께 사용된다.
+# play_mode.py에서 충돌 처리와 함께 사용된다..
 
 BASE = os.path.dirname(__file__)
 

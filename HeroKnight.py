@@ -678,7 +678,7 @@ class Boy:
 
     def update(self):
         # 이 메서드는 한 프레임 동안의 피격, 넉백, 각성, 가드 회복, 상태 머신 로직을 처리하며
-        # play_mode.update에서 매 프레임 호출된다.
+        # play_mode.update에서 매 프레임 호출된다..
         dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT

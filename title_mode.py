@@ -53,7 +53,7 @@ def update():
 
 def draw():
     # 이 함수는 타이틀 이미지를 화면 크기에 맞게 그리며
-    # game_framework.run의 메인 루프에서 호출된다.
+    # game_framework.run의 메인 루프에서 호출된다..
     clear_canvas()
 
     cw = get_canvas_width()

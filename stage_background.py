@@ -149,7 +149,7 @@ class Stage1Background:
 
 class Stage2Background:
     # 이 클래스는 2스테이지의 동굴 배경과 종유석 Hazard를 관리하며
-    # play_mode.update와 play_mode.update의 hazard 충돌 처리에서 사용된다.
+    # play_mode.update와 play_mode.update의 hazard 충돌 처리에서 사용된다..
     def __init__(self):
         self.image = load_image(os.path.join(BASE, 'cave', 'cave_background.png'))
         self.hazards = CaveStalactites()

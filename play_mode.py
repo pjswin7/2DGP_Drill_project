@@ -436,7 +436,7 @@ def update():
 
 def draw():
     # 이 함수는 배경, 바닥, 포탈, 캐릭터, 상태 바, 승패 이미지를 모두 그리며
-    # game_framework.run의 메인 루프에서 호출된다.
+    # game_framework.run의 메인 루프에서 호출된다..
     global game_result, lose_image, win_image
     clear_canvas()
     background.draw()

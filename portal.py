@@ -3,7 +3,7 @@ import os
 import game_framework
 
 # 이 모듈은 1스테이지에서 Evil 처치 후 등장하는 포탈 애니메이션과
-# 충돌 박스를 제공하며 play_mode.py에서 사용된다.
+# 충돌 박스를 제공하며 play_mode.py에서 사용된다..
 
 BASE = os.path.dirname(__file__)
 

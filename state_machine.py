@@ -10,7 +10,7 @@ class StateMachine:
 
     def handle_state_event(self, state_event):
         # 이 메서드는 외부 입력/이벤트를 받아 적절한 상태로 전이하며
-        # HeroKnight.Boy.handle_event, play_mode.resolve_ground 등에서 호출된다.
+        # HeroKnight.Boy.handle_event, play_mode.resolve_ground 등에서 호출된다..
         if self.cur_state not in self.rules:
             return
 

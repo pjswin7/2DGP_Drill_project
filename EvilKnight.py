@@ -712,7 +712,7 @@ class EvilKnight:
 
     def draw(self):
         # 이 메서드는 피격 깜빡임 효과를 적용한 뒤
-        # 현재 상태의 스프라이트를 그린다.
+        # 현재 상태의 스프라이트를 그린다..
         visible = True
         if self.hit_timer > 0.0:
             elapsed = HIT_EFFECT_DURATION - self.hit_timer
