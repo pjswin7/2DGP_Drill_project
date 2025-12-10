@@ -2,6 +2,9 @@ from pico2d import *
 import os
 import game_framework
 
+# 이 모듈은 1스테이지에서 Evil 처치 후 등장하는 포탈 애니메이션과
+# 충돌 박스를 제공하며 play_mode.py에서 사용된다.
+
 BASE = os.path.dirname(__file__)
 
 TIME_PER_ACTION = 0.5
@@ -9,13 +12,15 @@ ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
 
 
 class Portal:
-    def __init__(self, x, ground_top, stage=1):
+    # 이 클래스는 포탈 스프라이트를 애니메이션시키고
+    # Hero와의 충돌 박스를 제공한다.
+    def __init__(self, x, ground_top):
         self.image = load_image(os.path.join(BASE, 'cave', 'portal.png'))
 
         self.rows = 3
         self.frame_h = self.image.h // self.rows
 
-        self.cols = self.image.w // self.frame_h     # 한 줄 프레임 수
+        self.cols = self.image.w // self.frame_h
         self.frame_w = self.image.w // self.cols
 
         self.max_frames = self.cols
@@ -33,14 +38,9 @@ class Portal:
         self.ground_top = ground_top
         self.y = ground_top + (self.frame_h * self.scale) / 2.0
 
-        # ★ 이 포탈이 속한 스테이지 (1일 때만 동작)
-        self.stage = stage
-
     def update(self):
-        # ★ 1스테이지가 아니면 아예 동작 안 함
-        if self.stage != 1:
-            return
-
+        # 이 메서드는 포탈의 애니메이션 프레임을 갱신하며
+        # play_mode.update에서 호출된다.
         dt = game_framework.frame_time
         if dt < 0.0:
             dt = 0.0
@@ -56,10 +56,8 @@ class Portal:
                           + self.max_frames * ACTION_PER_TIME * dt) % self.max_frames
 
     def draw(self):
-        # ★ 1스테이지가 아니면 그리지 않음
-        if self.stage != 1:
-            return
-
+        # 이 메서드는 포탈 스프라이트 한 프레임을 그리며
+        # play_mode.draw에서 호출된다.
         fi = int(self.frame) % self.max_frames
         col = fi
         row = self.cur_row
@@ -73,10 +71,9 @@ class Portal:
         self.image.clip_draw(sx, sy, self.frame_w, self.frame_h,
                              self.x, self.y, dw, dh)
 
-        l, b, r, t = self.get_bb()
-        draw_rectangle(l, b, r, t)
-
     def get_bb(self):
+        # 이 메서드는 Hero가 포탈에 닿았는지 확인하기 위한
+        # 충돌 박스를 반환하며 play_mode.handle_events에서 사용된다.
         dw = self.frame_w * self.scale
         dh = self.frame_h * self.scale
 

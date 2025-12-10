@@ -9,8 +9,13 @@ import game_framework
 import title_mode
 import os
 
+# 이 모듈은 실제 전투가 일어나는 플레이 모드를 담당하며
+# HeroKnight.Boy, EvilKnight.EvilKnight, 배경, 포탈, UI를 모두 조합한다.
+
 
 def resolve_ground(obj, ground):
+    # 이 함수는 캐릭터의 바닥 충돌을 처리하며
+    # Boy, EvilKnight의 y 좌표와 낙하 상태 전환을 관리한다.
     ol, ob, or_, ot = obj.get_bb()
     gl, gb, gr, gt = ground.get_bb()
 
@@ -34,37 +39,39 @@ def resolve_ground(obj, ground):
 
 
 def rects_intersect(a, b):
+    # 이 함수는 두 사각형 박스가 겹치는지 검사하며
+    # 포탈 충돌, 몸통 충돌, 공격 판정에 공통으로 사용된다.
     al, ab, ar, at = a
     bl, bb, br, bt = b
     return not (ar <= bl or br <= al or at <= bb or bt <= ab)
 
 
 def is_ignoring_body_block(obj):
+    # 이 함수는 구르기/점프/낙하/죽는 중인 객체가
+    # 몸통 충돌을 무시해야 하는지 판정한다.
     if not hasattr(obj, 'state_machine'):
         return False
 
     cur = obj.state_machine.cur_state
 
-    # 롤링 상태: 몸통 충돌 무시
     if hasattr(obj, 'ROLL') and cur == obj.ROLL:
         return True
 
-    # 점프 상태: 몸통 충돌 무시
     if hasattr(obj, 'JUMP') and cur == obj.JUMP:
         return True
 
-    # 낙하 상태: 몸통 충돌 무시
     if hasattr(obj, 'FALL') and cur == obj.FALL:
         return True
 
-    # 죽는 상태(DIE): 몸통 충돌 무시
     if hasattr(obj, 'DIE') and cur == obj.DIE:
         return True
 
     return False
 
+
 def resolve_body_block(a, b):
-    # 둘 중 하나라도 점프/낙하/구르기 중이면 몸통 끼임 방지: 충돌 처리 X
+    # 이 함수는 Hero와 Evil이 서로 몸통으로 겹치지 않도록
+    # x 방향으로 밀어내는 충돌 처리를 담당한다.
     if is_ignoring_body_block(a) or is_ignoring_body_block(b):
         return
 
@@ -87,6 +94,8 @@ def resolve_body_block(a, b):
 
 
 def place_on_ground(obj, ground):
+    # 이 함수는 캐릭터를 바닥 위에 정확히 올려놓으며
+    # 스테이지 시작 시 Boy, Evil의 초기 위치를 맞출 때 사용된다.
     l, b, r, t = obj.get_bb()
     gl, gb, gr, gt = ground.get_bb()
     dy = gt - b
@@ -94,6 +103,8 @@ def place_on_ground(obj, ground):
 
 
 def resolve_attack(attacker, defender):
+    # 이 함수는 공격자와 방어자 사이의 공격 충돌을 처리하며
+    # 양쪽 캐릭터의 get_attack_bb와 get_bb, 가드/넉백/피격을 모두 담당한다.
     atk_bb = attacker.get_attack_bb()
     if atk_bb is None:
         return
@@ -132,7 +143,6 @@ def resolve_attack(attacker, defender):
             use_all = is_awakened_attacker
             if defender.consume_guard(knock_dir, use_all=use_all):
                 attacker.did_hit = True
-                print(f'Guard! {defender.__class__.__name__} guard = {defender.guard_current}')
                 return
 
     if hasattr(defender, 'apply_damage'):
@@ -141,7 +151,6 @@ def resolve_attack(attacker, defender):
         defender.hp = max(0, defender.hp - damage)
 
     attacker.did_hit = True
-    print(f'Hit! {defender.__class__.__name__} HP = {defender.hp}')
 
 
 BAR_TARGET_WIDTH = 260.0
@@ -150,6 +159,8 @@ HP_SLOTS = 10
 
 
 def draw_status_bars(boy, evil):
+    # 이 함수는 화면 상단의 HP/구르기/가드 바를 그리며
+    # play_mode.draw에서 호출된다.
     global health_bar_image, roll_bar_image, block_bar_image
 
     if health_bar_image is None:
@@ -251,6 +262,8 @@ def draw_status_bars(boy, evil):
 
 
 def reset_hero_for_stage(boy):
+    # 이 함수는 스테이지 전환 시 플레이어의 HP/가드/각성/피격 상태를 초기화하며
+    # init()과 2스테이지 진입 시에 사용된다.
     boy.hp = boy.max_hp
     boy.guard_current = boy.guard_max
     boy.awakened = False
@@ -262,7 +275,6 @@ def reset_hero_for_stage(boy):
     boy.knockback_timer = 0.0
     boy.knockback_dir = 0
 
-    # 죽는 모션 관련 플래그도 초기화
     boy.death_done = False
 
 
@@ -287,6 +299,8 @@ _current_time = 0.0
 
 
 def init():
+    # 이 함수는 플레이 모드의 리소스와 객체를 초기화하며
+    # title_mode에서 게임 시작 혹은 재시작 시 호출된다.
     global stage, background, grass, boy, evil, portal, _current_time
     global health_bar_image, roll_bar_image, block_bar_image
     global lose_image, win_image, game_result
@@ -320,14 +334,15 @@ def init():
     _current_time = time.time()
     game_result = None
 
-    print('play_mode init')
-
 
 def finish():
+    # 이 함수는 플레이 모드가 스택에서 제거될 때 호출되는 정리용 함수이다.
     print('play_mode finish')
 
 
 def handle_events():
+    # 이 함수는 SDL 이벤트를 처리하여
+    # ESC로 타이틀 전환, 포탈 진입, 게임 재시작, 플레이어 입력을 담당한다.
     global stage, background, grass, boy, evil, portal, game_result
 
     events = get_events()
@@ -372,6 +387,8 @@ def handle_events():
 
 
 def update():
+    # 이 함수는 한 프레임 동안의 전체 게임 로직을 담당하며
+    # 시간 갱신, 객체 업데이트, 충돌 처리, 승패 판정을 모두 수행한다.
     global background, grass, boy, evil, portal, _current_time, stage, game_result
 
     now = time.time()
@@ -394,7 +411,7 @@ def update():
     if stage == 1 and evil.hp <= 0 and portal is None:
         portal_x = get_canvas_width() - 80
         portal_y_top = grass.top
-        portal = Portal(portal_x, portal_y_top, stage=stage)
+        portal = Portal(portal_x, portal_y_top)
 
     if portal is not None:
         portal.update()
@@ -409,20 +426,17 @@ def update():
     if stage == 2:
         background.handle_hazard_collision(boy, evil)
 
-    # ---- 승패 판정: 죽는 모션이 끝난 뒤에만 WIN/LOSE 결정 ----
     if game_result is None:
-        # 플레이어 패배: HP 0 + 죽는 모션 완료
         if boy.hp <= 0 and getattr(boy, 'death_done', False):
-            # 단, 2스테이지에서 둘 다 죽은 경우는 밑에서 WIN 처리
             if not (stage == 2 and evil.hp <= 0):
                 game_result = 'LOSE'
-
-        # 플레이어 승리: 2스테이지에서 적 HP 0 + 적 죽는 모션 완료
         elif stage == 2 and evil.hp <= 0 and getattr(evil, 'death_done', False):
             game_result = 'WIN'
 
 
 def draw():
+    # 이 함수는 배경, 바닥, 포탈, 캐릭터, 상태 바, 승패 이미지를 모두 그리며
+    # game_framework.run의 메인 루프에서 호출된다.
     global game_result, lose_image, win_image
     clear_canvas()
     background.draw()
@@ -455,8 +469,10 @@ def draw():
 
 
 def pause():
+    # 이 함수는 모드 스택 일시 정지 시 호출된다.
     pass
 
 
 def resume():
+    # 이 함수는 일시 정지된 플레이 모드가 다시 활성화될 때 호출된다.
     pass

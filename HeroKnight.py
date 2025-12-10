@@ -4,15 +4,16 @@ import os
 import game_framework
 from state_machine import StateMachine
 
+# 이 모듈은 플레이어 캐릭터 HeroKnight의 상태, 움직임, 피격 처리를 담당하며
+# play_mode.py에서 생성되어 EvilKnight.py의 EvilKnight와 싸운다.
+
 BASE = os.path.dirname(__file__)
 
 
 def p(*names):
+    # 이 함수는 HeroKnight 스프라이트 폴더의 경로를 구성하며
+    # Boy 클래스에서 각 애니메이션 이미지를 로드할 때 사용된다.
     return os.path.join(BASE, 'Hero Knight', 'Sprites', *names)
-
-
-def cave_path(*names):
-    return os.path.join(BASE, 'cave', *names)
 
 
 PIXEL_PER_METER = (10.0 / 0.3)
@@ -26,11 +27,10 @@ ATTACK_DURATION = 0.45
 
 TIME_PER_ACTION = 0.5
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
-FRAMES_PER_ACTION = 8
 
 ROLL_SPEED_PPS = RUN_SPEED_PPS * 2.0
 ROLL_DURATION = 0.45
-ROLL_COOLTIME = 10.0  # 구르기 10초 쿨타임
+ROLL_COOLTIME = 10.0
 
 GRAVITY_PPS2 = 1200.0
 JUMP_SPEED_PPS = 560.0
@@ -48,6 +48,8 @@ SUPER_SPEED_SCALE = 1.3
 SUPER_SCALE_FACTOR = 1.4
 
 
+# 아래 입력 검사 함수들은 상태 머신 전이 규칙에서 사용되며
+# play_mode.handle_events에서 전달된 SDL 이벤트를 해석한다.
 def right_down(e):  return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_RIGHT
 def right_up(e):    return e[0] == 'INPUT' and e[1].type == SDL_KEYUP and e[1].key == SDLK_RIGHT
 def left_down(e):   return e[0] == 'INPUT' and e[1].type == SDL_KEYDOWN and e[1].key == SDLK_LEFT
@@ -64,6 +66,8 @@ def landed_idle(e): return e[0] == 'LANDED_IDLE'
 
 
 class Idle:
+    # 이 상태는 가만히 서 있는 상태이며
+    # Boy.update에서 StateMachine을 통해 반복 호출된다.
     def __init__(self, boy):
         self.boy = boy
 
@@ -91,6 +95,8 @@ class Idle:
 
 
 class Run:
+    # 이 상태는 좌우로 달리는 상태이며
+    # 방향키 입력으로 전이되고 이동 속도를 적용한다.
     def __init__(self, boy):
         self.boy = boy
 
@@ -128,6 +134,8 @@ class Run:
 
 
 class Jump:
+    # 이 상태는 점프 상승 구간을 처리하며
+    # Boy.handle_event의 위 방향 입력으로 진입한다.
     def __init__(self, boy):
         self.boy = boy
 
@@ -165,6 +173,8 @@ class Jump:
 
 
 class Fall:
+    # 이 상태는 점프 후 낙하 구간을 처리하며
+    # play_mode.resolve_ground에서 착지 시 Idle/Run으로 전환된다.
     def __init__(self, boy):
         self.boy = boy
 
@@ -205,6 +215,8 @@ class Fall:
 
 
 class Roll:
+    # 이 상태는 구르기 무적/이동을 처리하며
+    # Boy.handle_event에서 스페이스 입력으로 진입한다.
     def __init__(self, boy):
         self.boy = boy
         self.elapsed = 0.0
@@ -241,6 +253,8 @@ class Roll:
 
 
 class Attack:
+    # 이 상태는 공격 1/2 애니메이션을 재생하며
+    # play_mode.resolve_attack에서 공격 판정을 사용한다.
     def __init__(self, boy):
         self.boy = boy
         self.pick = 1
@@ -291,6 +305,8 @@ class Attack:
 
 
 class Block:
+    # 이 상태는 방어 자세를 유지하는 상태이며
+    # play_mode.resolve_attack에서 가드 판정에 사용된다.
     def __init__(self, boy):
         self.boy = boy
 
@@ -319,6 +335,8 @@ class Block:
 
 
 class Die:
+    # 이 상태는 플레이어가 사망했을 때 죽는 모션을 재생하며
+    # play_mode.update에서 death_done 플래그를 보고 패배를 판정한다.
     def __init__(self, boy):
         self.boy = boy
 
@@ -333,7 +351,6 @@ class Die:
         self.boy.frame = 0.0
         self.boy.prev_time = get_time()
 
-        # 죽는 모션 시작할 때 완료 상태 초기화
         self.boy.death_done = False
 
     def exit(self, e):
@@ -347,7 +364,6 @@ class Die:
         self.boy.frame += self.boy.max_frames * ACTION_PER_TIME * dt
         if self.boy.frame >= self.boy.max_frames:
             self.boy.frame = self.boy.max_frames - 1
-            # 마지막 프레임까지 도달하면 죽는 모션 완료
             self.boy.death_done = True
 
     def draw(self):
@@ -355,6 +371,8 @@ class Die:
 
 
 class Boy:
+    # 이 클래스는 플레이어 캐릭터 전체 로직을 담당하며
+    # play_mode.py에서 한 개 인스턴스로 사용된다.
     def __init__(self):
         self.images = [load_image(p('HeroKnight', 'Idle', f'HeroKnight_Idle_{i}.png')) for i in range(8)]
         self.run_images = [load_image(p('HeroKnight', 'Run', f'HeroKnight_Run_{i}.png')) for i in range(10)]
@@ -414,7 +432,6 @@ class Boy:
         self.awakened = False
         self.speed_scale = 1.0
 
-        # 죽는 모션 완료 여부
         self.death_done = False
 
         self.IDLE = Idle(self)
@@ -426,6 +443,8 @@ class Boy:
         self.BLOCK = Block(self)
         self.DIE = Die(self)
 
+        # 상태 머신 전이 규칙은 HeroKnight 자체 입력 위주로만 사용되며
+        # 낙하 착지는 play_mode.resolve_ground에서 이벤트를 보내 처리한다.
         self.rules = {
             self.IDLE: {
                 a_down: self.ATTACK,
@@ -456,6 +475,8 @@ class Boy:
         self.state_machine = StateMachine(self.IDLE, self.rules)
 
     def draw_current_frame(self):
+        # 이 메서드는 현재 애니메이션 프레임 한 장을 그리며
+        # 모든 상태의 draw()에서 공통으로 호출된다.
         fi = int(self.frame) % self.max_frames
         img = self.anim[fi]
         try:
@@ -476,6 +497,8 @@ class Boy:
                 img.composite_draw(0, 'h', self.x, self.y)
 
     def get_bb(self):
+        # 이 메서드는 몸통 히트박스를 계산하며
+        # play_mode.resolve_body_block, resolve_attack, stage_background.CaveStalactites에서 사용된다.
         fi = int(self.frame) % self.max_frames
         img = self.anim[fi]
 
@@ -498,6 +521,8 @@ class Boy:
         return left, bottom, right, top
 
     def get_attack_bb(self):
+        # 이 메서드는 공격 중일 때만 검 사용 히트박스를 반환하며
+        # play_mode.resolve_attack에서 사용된다.
         from HeroKnight import Attack
         if not isinstance(self.state_machine.cur_state, Attack):
             return None
@@ -524,6 +549,8 @@ class Boy:
         return left, bottom, right, top
 
     def start_hit_effect(self, knockback_dir=None):
+        # 이 메서드는 피격 시 깜빡임과 넉백을 설정하며
+        # play_mode.resolve_attack에서 호출된다.
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
         self.knockback_speed = HIT_KNOCKBACK_SPEED_PPS
@@ -534,6 +561,8 @@ class Boy:
             self.knockback_dir = -self.face_dir
 
     def apply_damage(self, amount, knockback_dir=None):
+        # 이 메서드는 실제 HP를 깎고 피격 연출을 시작하며
+        # 낙하 물체나 EvilKnight의 공격에 공통으로 사용된다.
         if self.hp <= 0:
             return
         if self.hit_timer > 0.0:
@@ -543,6 +572,8 @@ class Boy:
         self.start_hit_effect(knockback_dir)
 
     def start_block_knockback(self, knockback_dir):
+        # 이 메서드는 가드 성공 시의 짧은 넉백을 설정하며
+        # consume_guard 내부에서 사용된다.
         if knockback_dir is None:
             knockback_dir = -self.face_dir
         self.knockback_dir = knockback_dir
@@ -550,6 +581,8 @@ class Boy:
         self.knockback_speed = BLOCK_KNOCKBACK_SPEED_PPS
 
     def consume_guard(self, knockback_dir, use_all=False):
+        # 이 메서드는 방어 게이지를 소비하고 가드 넉백을 적용하며
+        # play_mode.resolve_attack에서 공격자가 맞을 때 호출된다.
         if self.guard_current <= 0:
             return False
 
@@ -563,18 +596,21 @@ class Boy:
         return True
 
     def super_power(self):
+        # 이 메서드는 HP가 일정 이하일 때 각성 상태로 전환하며
+        # Boy.update에서 주기적으로 호출된다.
         if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
             self.awakened = True
             self.speed_scale = SUPER_SPEED_SCALE
             self.scale = self.base_scale * SUPER_SCALE_FACTOR
 
     def handle_event(self, e):
+        # 이 메서드는 play_mode.handle_events에서 SDL 이벤트를 전달받아
+        # 상태 머신으로 넘기거나 구르기/방어 전용 입력을 처리한다.
         if self.hp <= 0:
             return
 
         cur_state = self.state_machine.cur_state
 
-        # 어디서든 구르기 입력 (SPACE)
         if e.type == SDL_KEYDOWN and e.key == SDLK_SPACE:
             if (cur_state not in (self.JUMP, self.FALL, self.ROLL)
                     and self.roll_cool <= 0.0):
@@ -582,7 +618,6 @@ class Boy:
                 self.roll_cool = ROLL_COOLTIME
                 return
 
-        # 공격 중 : 방향/방어 큐만 처리
         if isinstance(cur_state, Attack):
             if e.type == SDL_KEYDOWN:
                 if e.key == SDLK_RIGHT:
@@ -595,7 +630,6 @@ class Boy:
                     cur_state.queued_block = True
             return
 
-        # 방어 상태 전용 입력
         if isinstance(cur_state, Block):
             if e.type == SDL_KEYDOWN:
                 if e.key == SDLK_RIGHT:
@@ -614,7 +648,6 @@ class Boy:
                     self.state_machine.change_state(next_state)
             return
 
-        # 나머지 상태에서 방향키 처리
         if e.type == SDL_KEYDOWN:
             if e.key == SDLK_RIGHT:
                 self.dir = 1
@@ -631,6 +664,8 @@ class Boy:
         self.state_machine.handle_state_event(('INPUT', e))
 
     def update(self):
+        # 이 메서드는 한 프레임 동안의 피격, 넉백, 각성, 가드 회복, 상태 머신 로직을 처리하며
+        # play_mode.update에서 매 프레임 호출된다.
         dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT
@@ -670,6 +705,8 @@ class Boy:
         self.state_machine.update()
 
     def draw(self):
+        # 이 메서드는 피격 깜빡임 효과를 적용한 뒤
+        # 현재 상태의 스프라이트를 그린다.
         visible = True
         if self.hit_timer > 0.0:
             elapsed = HIT_EFFECT_DURATION - self.hit_timer

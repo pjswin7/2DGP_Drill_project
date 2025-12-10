@@ -3,15 +3,16 @@ import os
 import game_framework
 from state_machine import StateMachine
 
+# 이 모듈은 적 캐릭터 EvilKnight의 상태, AI, 피격 처리를 담당하며
+# play_mode.py에서 플레이어와 싸우도록 사용된다.
+
 BASE = os.path.dirname(__file__)
 
 
 def p(*names):
+    # 이 함수는 EvilKnight 스프라이트 폴더 경로를 구성하며
+    # EvilKnight 클래스에서 애니메이션 시트 파일을 로드할 때 사용된다.
     return os.path.join(BASE, '120x80_PNGSheets', *names)
-
-
-def cave_path(*names):
-    return os.path.join(BASE, 'cave', *names)
 
 
 FRAME_W = 120
@@ -54,6 +55,8 @@ EVIL_EVADE_JUMP_PROB = 0.25
 EVIL_EVADE_ROLL_PROB = 0.5
 
 
+# 아래 이벤트 판정 함수들은 EvilKnight의 낙하 착지 전이에서 사용되며
+# play_mode.resolve_ground가 LANDED_* 이벤트를 보낼 때 쓰인다.
 def landed_run(e):
     return e[0] == 'LANDED_RUN'
 
@@ -63,6 +66,8 @@ def landed_idle(e):
 
 
 class Idle:
+    # 이 상태는 Evil이 가만히 서 있는 상태이며
+    # EvilKnight.update의 AI가 행동을 결정하지 않을 때 유지된다.
     def __init__(self, knight):
         self.knight = knight
 
@@ -90,6 +95,8 @@ class Idle:
 
 
 class Run:
+    # 이 상태는 Evil이 좌우로 움직이는 상태이며
+    # AI가 추격/회피를 결정할 때 사용된다.
     def __init__(self, knight):
         self.knight = knight
 
@@ -120,6 +127,8 @@ class Run:
 
 
 class Roll:
+    # 이 상태는 Evil의 긴급 회피 구르기를 담당하며
+    # 종유석 회피 및 근거리 회피 AI에서 사용된다.
     def __init__(self, knight):
         self.knight = knight
         self.elapsed = 0.0
@@ -160,6 +169,8 @@ class Roll:
 
 
 class Attack:
+    # 이 상태는 Evil의 공격 애니메이션을 재생하며
+    # play_mode.resolve_attack에서 검 히트박스를 사용한다.
     def __init__(self, knight):
         self.knight = knight
         self.fps = 0.0
@@ -216,6 +227,8 @@ class Attack:
 
 
 class Jump:
+    # 이 상태는 Evil의 점프 상승 구간을 처리하며
+    # 회피 AI가 점프를 선택했을 때 사용된다.
     def __init__(self, knight):
         self.knight = knight
 
@@ -249,6 +262,8 @@ class Jump:
 
 
 class Fall:
+    # 이 상태는 Evil의 낙하 구간을 처리하며
+    # play_mode.resolve_ground에서 착지 이벤트로 Idle/Run으로 전환된다.
     def __init__(self, knight):
         self.knight = knight
 
@@ -278,6 +293,8 @@ class Fall:
 
 
 class Die:
+    # 이 상태는 Evil이 사망 시 죽는 모션을 재생하며
+    # play_mode.update에서 death_done 플래그를 보고 승리를 판정한다.
     def __init__(self, knight):
         self.knight = knight
 
@@ -290,7 +307,6 @@ class Die:
         self.knight.frame = 0.0
         self.knight.prev_time = get_time()
 
-        # 죽는 모션 시작 시 완료 플래그 초기화
         self.knight.death_done = False
 
     def exit(self, e):
@@ -304,7 +320,6 @@ class Die:
         self.knight.frame += self.knight.max_frames * ACTION_PER_TIME * dt
         if self.knight.frame >= self.knight.max_frames:
             self.knight.frame = self.knight.max_frames - 1
-            # 마지막 프레임 도달 → 죽는 모션 완료
             self.knight.death_done = True
 
     def draw(self):
@@ -312,6 +327,8 @@ class Die:
 
 
 class EvilKnight:
+    # 이 클래스는 적의 전체 로직과 AI를 담당하며
+    # play_mode.py에서 HeroKnight.Boy와 싸우게 된다.
     def __init__(self):
         self.idle_sheet = load_image(p('_Idle.png'))
         self.run_sheet = load_image(p('_Run.png'))
@@ -378,7 +395,6 @@ class EvilKnight:
         self.stage = 1
         self.bg = None
 
-        # 죽는 모션 완료 여부
         self.death_done = False
 
         self.IDLE = Idle(self)
@@ -404,6 +420,8 @@ class EvilKnight:
         self.state_machine = StateMachine(self.IDLE, self.rules)
 
     def draw_current_frame(self):
+        # 이 메서드는 EvilKnight의 현재 시트에서 한 프레임을 그리며
+        # 모든 상태의 draw()에서 공통으로 사용된다.
         fi = int(self.frame) % self.max_frames
         sx = fi * self.frame_w
         sy = 0
@@ -424,6 +442,8 @@ class EvilKnight:
             )
 
     def get_bb(self):
+        # 이 메서드는 Evil의 몸통 히트박스를 계산하며
+        # play_mode.resolve_body_block, resolve_attack, stage_background.CaveStalactites에서 사용된다.
         full_w = self.frame_w * self.scale
         full_h = self.frame_h * self.scale
 
@@ -443,6 +463,8 @@ class EvilKnight:
         return left, bottom, right, top
 
     def get_attack_bb(self):
+        # 이 메서드는 공격 중일 때만 검 히트박스를 반환하며
+        # play_mode.resolve_attack에서 사용된다.
         from EvilKnight import Attack
         if not isinstance(self.state_machine.cur_state, Attack):
             return None
@@ -467,6 +489,8 @@ class EvilKnight:
         return left, bottom, right, top
 
     def start_hit_effect(self, knockback_dir=None):
+        # 이 메서드는 피격 시 깜빡임과 넉백을 설정하며
+        # play_mode.resolve_attack에서 호출된다.
         self.hit_timer = HIT_EFFECT_DURATION
         self.knockback_timer = HIT_KNOCKBACK_DURATION
 
@@ -476,6 +500,8 @@ class EvilKnight:
             self.knockback_dir = -self.face_dir
 
     def apply_damage(self, amount, knockback_dir=None):
+        # 이 메서드는 Evil의 HP를 감소시키고 피격 연출을 시작하며
+        # HeroKnight 공격과 종유석 모두 여기로 들어온다.
         if self.hp <= 0:
             return
         if self.hit_timer > 0.0:
@@ -485,16 +511,22 @@ class EvilKnight:
         self.start_hit_effect(knockback_dir)
 
     def super_power(self):
+        # 이 메서드는 Evil의 HP가 일정 이하일 때 각성 상태로 전환하며
+        # EvilKnight.update에서 주기적으로 호출된다.
         if (not self.awakened) and self.hp < SUPER_THRESHOLD_HP:
             self.awakened = True
             self.speed_scale = SUPER_SPEED_SCALE
             self.scale = self.base_scale * SUPER_SCALE_FACTOR
 
     def is_on_ground(self):
+        # 이 메서드는 Evil이 점프/낙하 상태가 아닌지 확인하여
+        # 회피/공격 AI에서 조건으로 사용된다.
         return (self.vy == 0.0
                 and self.state_machine.cur_state not in (self.JUMP, self.FALL))
 
     def _find_stalactite_danger(self):
+        # 이 내부 메서드는 2스테이지에서 머리 위에 떨어지는 종유석이 있는지 확인하여
+        # AI가 회피 행동을 결정할 때 사용한다.
         if self.stage != 2:
             return None
         if self.bg is None or not hasattr(self.bg, 'hazards'):
@@ -512,6 +544,8 @@ class EvilKnight:
         return None
 
     def ai_update(self):
+        # 이 메서드는 Evil의 전체 전투 AI를 담당하며
+        # EvilKnight.update에서 매 프레임 호출된다.
         if self.hp <= 0:
             return
         cur = self.state_machine.cur_state
@@ -639,9 +673,13 @@ class EvilKnight:
             self.state_machine.change_state(self.IDLE)
 
     def handle_event(self, e):
+        # 이 메서드는 Evil이 플레이어처럼 입력을 받지 않으므로
+        # 현재는 구현되지 않은 자리이다.
         pass
 
     def update(self):
+        # 이 메서드는 Evil의 피격, 넉백, 각성, AI, 상태 머신 업데이트를
+        # 한 프레임 동안 처리하며 play_mode.update에서 호출된다.
         dt = game_framework.frame_time
         if dt > MAX_DT:
             dt = MAX_DT
@@ -673,6 +711,8 @@ class EvilKnight:
         self.state_machine.update()
 
     def draw(self):
+        # 이 메서드는 피격 깜빡임 효과를 적용한 뒤
+        # 현재 상태의 스프라이트를 그린다.
         visible = True
         if self.hit_timer > 0.0:
             elapsed = HIT_EFFECT_DURATION - self.hit_timer
@@ -683,4 +723,5 @@ class EvilKnight:
             self.state_machine.draw()
 
     def start_attack(self):
+        # 이 메서드는 AI에서 공격을 시작할 때 상태를 ATTACK으로 전환한다.
         self.state_machine.change_state(self.ATTACK)
