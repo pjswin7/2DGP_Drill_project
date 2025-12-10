@@ -42,7 +42,20 @@ def rects_intersect(a, b):
     return not (ar <= bl or br <= al or at <= bb or bt <= ab)
 
 
+def is_rolling(obj):
+    """해당 객체가 구르기 상태인지 확인."""
+    return (
+        hasattr(obj, 'state_machine')
+        and hasattr(obj, 'ROLL')
+        and obj.state_machine.cur_state == obj.ROLL
+    )
+
+
 def resolve_body_block(a, b):
+    # 둘 중 하나라도 구르기 중이면 몸통 충돌을 무시하고 서로 통과시킨다.
+    if is_rolling(a) or is_rolling(b):
+        return
+
     al, ab, ar, at = a.get_bb()
     bl, bb, br, bt = b.get_bb()
 
@@ -168,17 +181,15 @@ def draw_status_bars(boy, evil):
         full_w = img.w
         full_h = img.h
 
-        src_w = int(full_w * ratio)
-        if src_w <= 0:
-            src_w = 1
-
+        # 소스 이미지에서 사용할 폭
+        src_w = full_w * ratio
         dst_w = target_w * ratio
         dst_h = target_h(img)
 
         sx = 0
         sy = 0
 
-        img.clip_draw(sx, sy, src_w, full_h,
+        img.clip_draw(sx, sy, int(src_w), full_h,
                       x_left + dst_w / 2, y_center,
                       dst_w, dst_h)
 
