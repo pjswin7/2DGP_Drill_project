@@ -611,6 +611,10 @@ class Boy:
 
         cur_state = self.state_machine.cur_state
 
+        # 방어 가능 여부: guard_current가 0이면 방어 입력을 무시하도록 사용한다.
+        can_block = (self.guard_current > 0)
+
+        # 스페이스 입력: 구르기
         if e.type == SDL_KEYDOWN and e.key == SDLK_SPACE:
             if (cur_state not in (self.JUMP, self.FALL, self.ROLL)
                     and self.roll_cool <= 0.0):
@@ -618,6 +622,7 @@ class Boy:
                 self.roll_cool = ROLL_COOLTIME
                 return
 
+        # 공격 중 추가 입력 처리
         if isinstance(cur_state, Attack):
             if e.type == SDL_KEYDOWN:
                 if e.key == SDLK_RIGHT:
@@ -627,9 +632,12 @@ class Boy:
                     self.face_dir = -1
                     cur_state.desired_dir = -1
                 elif e.key == SDLK_s:
-                    cur_state.queued_block = True
+                    # 방어 게이지가 남아 있을 때만 공격 후 방어 예약이 가능하다.
+                    if can_block:
+                        cur_state.queued_block = True
             return
 
+        # 방어 상태에서의 입력 처리
         if isinstance(cur_state, Block):
             if e.type == SDL_KEYDOWN:
                 if e.key == SDLK_RIGHT:
@@ -648,6 +656,7 @@ class Boy:
                     self.state_machine.change_state(next_state)
             return
 
+        # 일반 이동 입력 처리
         if e.type == SDL_KEYDOWN:
             if e.key == SDLK_RIGHT:
                 self.dir = 1
@@ -660,6 +669,10 @@ class Boy:
                 self.dir = 0
             elif e.key == SDLK_LEFT and self.dir == -1:
                 self.dir = 0
+
+        # 방어 게이지가 0일 때는 S 키 입력을 상태 머신에 전달하지 않는다.
+        if e.type == SDL_KEYDOWN and e.key == SDLK_s and not can_block:
+            return
 
         self.state_machine.handle_state_event(('INPUT', e))
 
