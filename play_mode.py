@@ -39,27 +39,29 @@ def rects_intersect(a, b):
     return not (ar <= bl or br <= al or at <= bb or bt <= ab)
 
 
-# 점프 / 낙하 / 구르기 중에는 몸 충돌 무시
 def is_ignoring_body_block(obj):
     if not hasattr(obj, 'state_machine'):
         return False
 
     cur = obj.state_machine.cur_state
 
-    # 롤링 상태
+    # 롤링 상태: 몸통 충돌 무시
     if hasattr(obj, 'ROLL') and cur == obj.ROLL:
         return True
 
-    # 점프 상태
+    # 점프 상태: 몸통 충돌 무시
     if hasattr(obj, 'JUMP') and cur == obj.JUMP:
         return True
 
-    # 낙하 상태
+    # 낙하 상태: 몸통 충돌 무시
     if hasattr(obj, 'FALL') and cur == obj.FALL:
         return True
 
-    return False
+    # 죽는 상태(DIE): 몸통 충돌 무시
+    if hasattr(obj, 'DIE') and cur == obj.DIE:
+        return True
 
+    return False
 
 def resolve_body_block(a, b):
     # 둘 중 하나라도 점프/낙하/구르기 중이면 몸통 끼임 방지: 충돌 처리 X
