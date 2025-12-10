@@ -245,6 +245,9 @@ def reset_hero_for_stage(boy):
     boy.knockback_timer = 0.0
     boy.knockback_dir = 0
 
+    # 죽는 모션 관련 플래그도 초기화
+    boy.death_done = False
+
 
 stage = 1
 background = None
@@ -389,11 +392,16 @@ def update():
     if stage == 2:
         background.handle_hazard_collision(boy, evil)
 
+    # ---- 여기서 승패 판정 시점을 '죽는 모션 끝난 뒤'로 변경 ----
     if game_result is None:
-        if boy.hp <= 0:
+        # 1) 플레이어 패배: HP 0 + 플레이어 죽는 모션 완료
+        if boy.hp <= 0 and getattr(boy, 'death_done', False):
+            # 단, 2스테이지에서 둘 다 죽은 경우는 밑에서 WIN 처리
             if not (stage == 2 and evil.hp <= 0):
                 game_result = 'LOSE'
-        elif stage == 2 and evil.hp <= 0:
+
+        # 2) 플레이어 승리: 2스테이지에서 적 HP 0 + 적 죽는 모션 완료
+        elif stage == 2 and evil.hp <= 0 and getattr(evil, 'death_done', False):
             game_result = 'WIN'
 
 

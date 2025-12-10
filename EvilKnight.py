@@ -27,7 +27,7 @@ RUN_SPEED_PPS = (RUN_SPEED_MPS * PIXEL_PER_METER)
 ROLL_SPEED_PPS = RUN_SPEED_PPS * 2.0
 ROLL_DURATION = 0.45
 
-ATTACK_DURATION = 0.45   # 공격 1회 재생 시간
+ATTACK_DURATION = 0.45
 
 TIME_PER_ACTION = 0.5
 ACTION_PER_TIME = 1.0 / TIME_PER_ACTION
@@ -37,17 +37,14 @@ JUMP_SPEED_PPS = 560.0
 
 MAX_DT = 1.0 / 30.0
 
-# 피격 관련 상수
 HIT_EFFECT_DURATION = 2.0
 HIT_KNOCKBACK_DURATION = 0.2
 HIT_KNOCKBACK_SPEED_PPS = 250.0
 
-# 각성 관련 상수
 SUPER_THRESHOLD_HP = 50
 SUPER_SPEED_SCALE = 1.3
-SUPER_SCALE_FACTOR = 1.4  # 캐릭터 크기 배율
+SUPER_SCALE_FACTOR = 1.4
 
-# ==== Evil AI 관련 상수 ====
 EVIL_ATTACK_COOL_BASE = 1.2
 EVIL_ATTACK_COOL_AWAKENED = 0.7
 EVIL_ROLL_COOL = 2.0
@@ -293,6 +290,9 @@ class Die:
         self.knight.frame = 0.0
         self.knight.prev_time = get_time()
 
+        # 죽는 모션 시작 시 완료 플래그 초기화
+        self.knight.death_done = False
+
     def exit(self, e):
         pass
 
@@ -304,6 +304,8 @@ class Die:
         self.knight.frame += self.knight.max_frames * ACTION_PER_TIME * dt
         if self.knight.frame >= self.knight.max_frames:
             self.knight.frame = self.knight.max_frames - 1
+            # 마지막 프레임 도달 → 죽는 모션 완료
+            self.knight.death_done = True
 
     def draw(self):
         self.knight.draw_current_frame()
@@ -311,7 +313,6 @@ class Die:
 
 class EvilKnight:
     def __init__(self):
-        # 스프라이트 시트
         self.idle_sheet = load_image(p('_Idle.png'))
         self.run_sheet = load_image(p('_Run.png'))
         self.roll_sheet = load_image(p('_Roll.png'))
@@ -376,6 +377,9 @@ class EvilKnight:
         self.target = None
         self.stage = 1
         self.bg = None
+
+        # 죽는 모션 완료 여부
+        self.death_done = False
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)
@@ -599,6 +603,7 @@ class EvilKnight:
                 return
 
             else:
+                import random
                 r = random.random()
 
                 if self.roll_cool <= 0.0 and self.is_on_ground() and r < EVIL_EVADE_ROLL_PROB:

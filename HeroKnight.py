@@ -245,9 +245,7 @@ class Attack:
         self.boy = boy
         self.pick = 1
         self.fps = 0.0
-        # 공격 끝난 뒤 움직일 방향(입력 큐)
         self.desired_dir = 0
-        # 공격 끝나자마자 방어로 이어질지 여부
         self.queued_block = False
 
     def enter(self, e):
@@ -256,13 +254,10 @@ class Attack:
         self.boy.frame = 0
         self.boy.prev_time = get_time()
 
-        # 현재 이동 방향을 기반으로 공격 후 방향 설정
         self.desired_dir = self.boy.dir
         self.queued_block = False
 
-        # 공격 중에는 실제 이동은 0으로 고정
         self.boy.dir = 0
-
         self.boy.did_hit = False
 
         self.boy.anim = self.boy.attack1 if self.pick == 1 else self.boy.attack2
@@ -270,7 +265,6 @@ class Attack:
         self.fps = self.boy.max_frames / ATTACK_DURATION
 
     def exit(self, e):
-        # dir 복원은 do()에서 이미 원하는 방향으로 세팅하므로 여기서는 아무 것도 안 함
         pass
 
     def do(self):
@@ -282,10 +276,8 @@ class Attack:
         self.boy.frame += self.fps * dt
 
         if self.boy.frame >= self.boy.max_frames:
-            # 공격이 끝난 시점에, 공격 도중 입력으로 정해둔 방향으로 이동 시작
             self.boy.dir = self.desired_dir
 
-            # 방어가 큐에 들어있으면 바로 BLOCK 상태로 전환
             if self.queued_block:
                 self.boy.state_machine.change_state(self.boy.BLOCK)
             else:
@@ -341,6 +333,9 @@ class Die:
         self.boy.frame = 0.0
         self.boy.prev_time = get_time()
 
+        # 죽는 모션 시작할 때 완료 상태 초기화
+        self.boy.death_done = False
+
     def exit(self, e):
         pass
 
@@ -352,6 +347,8 @@ class Die:
         self.boy.frame += self.boy.max_frames * ACTION_PER_TIME * dt
         if self.boy.frame >= self.boy.max_frames:
             self.boy.frame = self.boy.max_frames - 1
+            # 마지막 프레임까지 도달하면 죽는 모션 완료
+            self.boy.death_done = True
 
     def draw(self):
         self.boy.draw_current_frame()
@@ -416,6 +413,9 @@ class Boy:
 
         self.awakened = False
         self.speed_scale = 1.0
+
+        # 죽는 모션 완료 여부
+        self.death_done = False
 
         self.IDLE = Idle(self)
         self.RUN = Run(self)
@@ -574,7 +574,7 @@ class Boy:
 
         cur_state = self.state_machine.cur_state
 
-        # --- 어디서든 구르기 입력 (SPACE) 처리 ---
+        # 어디서든 구르기 입력 (SPACE)
         if e.type == SDL_KEYDOWN and e.key == SDLK_SPACE:
             if (cur_state not in (self.JUMP, self.FALL, self.ROLL)
                     and self.roll_cool <= 0.0):
@@ -582,7 +582,7 @@ class Boy:
                 self.roll_cool = ROLL_COOLTIME
                 return
 
-        # --- 공격 중일 때 : 방향 전환 + 방어 큐만 처리 ---
+        # 공격 중 : 방향/방어 큐만 처리
         if isinstance(cur_state, Attack):
             if e.type == SDL_KEYDOWN:
                 if e.key == SDLK_RIGHT:
@@ -592,12 +592,10 @@ class Boy:
                     self.face_dir = -1
                     cur_state.desired_dir = -1
                 elif e.key == SDLK_s:
-                    # 공격이 끝나면 바로 방어 상태로 넘어가도록 표시
                     cur_state.queued_block = True
-            # 공격 중에는 다른 상태 전이 없음
             return
 
-        # --- 방어 상태일 때 전용 입력 처리 ---
+        # 방어 상태 전용 입력
         if isinstance(cur_state, Block):
             if e.type == SDL_KEYDOWN:
                 if e.key == SDLK_RIGHT:
@@ -616,7 +614,7 @@ class Boy:
                     self.state_machine.change_state(next_state)
             return
 
-        # --- 나머지 상태(Idle, Run, Jump, Fall, Roll)에서 방향키 처리 ---
+        # 나머지 상태에서 방향키 처리
         if e.type == SDL_KEYDOWN:
             if e.key == SDLK_RIGHT:
                 self.dir = 1
@@ -630,7 +628,6 @@ class Boy:
             elif e.key == SDLK_LEFT and self.dir == -1:
                 self.dir = 0
 
-        # 상태 머신에 입력 이벤트 전달(점프, 공격, 방어 전이 등은 rules로 처리)
         self.state_machine.handle_state_event(('INPUT', e))
 
     def update(self):
