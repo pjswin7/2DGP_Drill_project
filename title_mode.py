@@ -23,7 +23,7 @@ def init():
     # 타이틀 모드 진입 시 호출되며
     # 타이틀 배경 이미지를 로드한다.
     global image
-    image = load_image(cave_path('main_title.png'))
+    image = load_image('cave/main_title.png')
 
 
 def finish():

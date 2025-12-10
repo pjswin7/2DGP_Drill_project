@@ -366,18 +366,19 @@ class Boy:
     # play_mode.py에서 한 개 인스턴스로 사용된다.
     def __init__(self):
         # 스프라이트 이미지는 모두 cave 폴더에 평탄하게 들어 있다고 가정한다.
-        self.images = [load_image(cave_path(f'HeroKnight_Idle_{i}.png')) for i in range(8)]
-        self.run_images = [load_image(cave_path(f'HeroKnight_Run_{i}.png')) for i in range(10)]
-        self.roll_images = [load_image(cave_path(f'HeroKnight_Roll_{i}.png')) for i in range(9)]
-        self.attack1 = [load_image(cave_path(f'HeroKnight_Attack1_{i}.png')) for i in range(6)]
-        self.attack2 = [load_image(cave_path(f'HeroKnight_Attack2_{i}.png')) for i in range(6)]
-        self.block_idle_images = [load_image(cave_path(f'HeroKnight_Block Idle_{i}.png')) for i in range(8)]
-        self.death_images = [load_image(cave_path(f'HeroKnight_Death_{i}.png')) for i in range(10)]
+        self.images = [load_image(f'cave/HeroKnight_Idle_{i}.png') for i in range(8)]
+        self.run_images = [load_image(f'cave/HeroKnight_Run_{i}.png') for i in range(10)]
+        self.roll_images = [load_image(f'cave/HeroKnight_Roll_{i}.png') for i in range(9)]
+        self.attack1 = [load_image(f'cave/HeroKnight_Attack1_{i}.png') for i in range(6)]
+        self.attack2 = [load_image(f'cave/HeroKnight_Attack2_{i}.png') for i in range(6)]
+        self.block_idle_images = [load_image(f'cave/HeroKnight_Block Idle_{i}.png') for i in range(8)]
+        self.death_images = [load_image(f'cave/HeroKnight_Death_{i}.png') for i in range(10)]
 
         self.JUMP_LAST = 1
         self.FALL_LAST = 3
-        self.jump_images = [load_image(cave_path(f'HeroKnight_Jump_{i}.png')) for i in range(self.JUMP_LAST + 1)]
-        self.fall_images = [load_image(cave_path(f'HeroKnight_Fall_{i}.png')) for i in range(self.FALL_LAST + 1)]
+        self.jump_images = [load_image(f'cave/HeroKnight_Jump_{i}.png') for i in range(self.JUMP_LAST + 1)]
+        self.fall_images = [load_image(f'cave/HeroKnight_Fall_{i}.png') for i in range(self.FALL_LAST + 1)]
+
 
         self.frame = 0.0
         self.fps = 10

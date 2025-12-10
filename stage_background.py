@@ -22,7 +22,7 @@ class Stalactite:
 
     def __init__(self, x, y):
         if Stalactite.image is None:
-            Stalactite.image = load_image(cave_path('cave_crystal.png'))
+            Stalactite.image = load_image('cave/cave_crystal.png')
         self.x = x
         self.y = y
         self.active = True
@@ -133,7 +133,7 @@ class Stage1Background:
     # 이 클래스는 1스테이지의 초원 배경을 그리고
     # play_mode.update와 draw에서 사용된다.
     def __init__(self):
-        self.image = load_image(cave_path('colored_land.png'))
+        self.image = load_image('cave/colored_land.png')
 
     def update(self):
         # 이 메서드는 배경의 논리 업데이트를 담당한다.
@@ -150,7 +150,7 @@ class Stage2Background:
     # 이 클래스는 2스테이지의 동굴 배경과 종유석 Hazard를 관리하며
     # play_mode.update와 play_mode.update의 hazard 충돌 처리에서 사용된다.
     def __init__(self):
-        self.image = load_image(cave_path('cave_background.png'))
+        self.image = load_image('cave/cave_background.png')
         self.hazards = CaveStalactites()
 
     def update(self):

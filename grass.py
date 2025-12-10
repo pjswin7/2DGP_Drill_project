@@ -19,7 +19,7 @@ class Grass:
     # 이 클래스는 1스테이지의 초원 바닥을 그리며
     # play_mode.py에서 Boy, Evil의 착지 기준이 되는 충돌 박스를 제공한다.
     def __init__(self):
-        self.tile = load_image(cave_path('grass.png'))
+        self.tile = load_image('cave/grass.png')
         self.top = GROUND_TOP_Y
         self.bottom = self.top - self.tile.h
 
@@ -52,8 +52,8 @@ class CaveGround:
     # 이 클래스는 2스테이지의 동굴 바닥과 아래 배경을 그리며
     # play_mode.py에서 Boy, Evil의 착지 기준으로 사용된다.
     def __init__(self):
-        self.tile = load_image(cave_path('cave_tile.png'))
-        self.bottom_tile = load_image(cave_path('cave2_title.png'))
+        self.tile = load_image('cave/cave_tile.png')
+        self.bottom_tile = load_image('cave/cave2_title.png')
 
         # 화면에 보이는 바닥 위치와 실제 충돌 판정용 바닥 위치를 분리한다.
         self.visual_top = GROUND_TOP_Y

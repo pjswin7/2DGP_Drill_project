@@ -331,14 +331,14 @@ class EvilKnight:
     # 이 클래스는 적의 전체 로직과 AI를 담당하며
     # play_mode.py에서 HeroKnight.Boy와 싸우게 된다.
     def __init__(self):
-        self.idle_sheet = load_image(cave_path('_Idle.png'))
-        self.run_sheet = load_image(cave_path('_Run.png'))
-        self.roll_sheet = load_image(cave_path('_Roll.png'))
-        self.jump_sheet = load_image(cave_path('_Jump.png'))
-        self.fall_sheet = load_image(cave_path('_JumpFallInbetween.png'))
-        self.attack1_sheet = load_image(cave_path('_Attack.png'))
-        self.attack2_sheet = load_image(cave_path('_Attack2.png'))
-        self.dead_sheet = load_image(cave_path('_Death.png'))
+        self.idle_sheet = load_image('cave/_Idle.png')
+        self.run_sheet = load_image('cave/_Run.png')
+        self.roll_sheet = load_image('cave/_Roll.png')
+        self.jump_sheet = load_image('cave/_Jump.png')
+        self.fall_sheet = load_image('cave/_JumpFallInbetween.png')
+        self.attack1_sheet = load_image('cave/_Attack.png')
+        self.attack2_sheet = load_image('cave/_Attack2.png')
+        self.dead_sheet = load_image('cave/_Death.png')
 
         self.frame_w = FRAME_W
         self.frame_h = FRAME_H

@@ -22,7 +22,7 @@ class Portal:
     # 이 클래스는 포탈 스프라이트를 애니메이션시키고
     # Hero와의 충돌 박스를 제공한다.
     def __init__(self, x, ground_top):
-        self.image = load_image(cave_path('portal.png'))
+        self.image = load_image('cave/portal.png')
 
         # 스프라이트 시트는 세로 3줄, 가로 여러 프레임 구조라고 가정한다.
         self.rows = 3

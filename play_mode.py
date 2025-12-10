@@ -344,12 +344,12 @@ def init():
 
     portal = None
 
-    health_bar_image = load_image(cave_path('health_bar.png'))
-    roll_bar_image = load_image(cave_path('roll_bar.png'))
-    block_bar_image = load_image(cave_path('block_bar.png'))
+    health_bar_image = load_image('cave/health_bar.png')
+    roll_bar_image = load_image('cave/roll_bar.png')
+    block_bar_image = load_image('cave/block_bar.png')
 
-    lose_image = load_image(cave_path('lose.png'))
-    win_image = load_image(cave_path('win.png'))
+    lose_image = load_image('cave/lose.png')
+    win_image = load_image('cave/win.png')
 
     _current_time = time.time()
     game_result = None
